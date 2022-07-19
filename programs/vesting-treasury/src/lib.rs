@@ -1,4 +1,6 @@
-use anchor_lang::prelude::*;
+pub mod prelude;
+
+use crate::prelude::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
