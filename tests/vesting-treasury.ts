@@ -8,9 +8,9 @@ describe("vesting-treasury", () => {
 
   const program = anchor.workspace.VestingTreasury as Program<VestingTreasury>;
 
-  it("Is initialized!", async () => {
-    // Add your test here.
-    const tx = await program.methods.initialize().rpc();
-    console.log("Your transaction signature", tx);
-  });
+  // it("Is initialized!", async () => {
+  //   // Add your test here.
+  //   const tx = await program.methods.initialize().rpc();
+  //   console.log("Your transaction signature", tx);
+  // });
 });

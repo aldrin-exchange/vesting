@@ -12,6 +12,6 @@ impl Vesting {
 
     pub fn space() -> usize {
         //TODO: this is a placeholder for the timebeing
-        8 as usize
+        8_usize
     }
 }
