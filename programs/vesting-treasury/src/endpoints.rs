@@ -1,1 +1,3 @@
-pub use anchor_lang::prelude::*;
+pub mod create_vesting_schedule;
+
+pub use create_vesting_schedule::*;
