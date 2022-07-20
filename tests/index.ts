@@ -1,6 +1,4 @@
-import chaiAsPromised from "chai-as-promised";
 import chai from "chai";
-chai.use(chaiAsPromised);
 
 import * as createVestingSchedule from "./endpoints/create-vesting-schedule";
 

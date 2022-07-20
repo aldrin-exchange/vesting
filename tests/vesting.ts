@@ -1,5 +1,5 @@
 import { vesting, payer, provider } from "./helpers";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   createAccount,
   createMint,
@@ -8,6 +8,7 @@ import {
   Account,
   getAccount,
   getOrCreateAssociatedTokenAccount,
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { BN } from "@project-serum/anchor";
 
@@ -70,16 +71,10 @@ export class Vesting {
     const skipAdminSignature = input.skipAdminSignature ?? false;
     const skipCreateVesting = input.skipCreateVesting ?? false;
 
+    const preInstructions = [];
     const signers = [];
     if (!skipAdminSignature) {
       signers.push(adminKeypair);
-    }
-
-    const preInstructions = [];
-    if (!skipCreateVesting) {
-      preInstructions.push(
-        await vesting.account.vesting.createInstruction(vestingKeypair)
-      );
     }
 
     await vesting.methods
@@ -92,11 +87,13 @@ export class Vesting {
       )
       .accounts({
         admin: adminKeypair.publicKey,
-        vesting: vestingKeypair.publicKey,
+        // vesting: vestingKeypair.publicKey,
         vestingSigner: vestingSignerPda,
         mint,
-        vestingVault,
-        vesteeWallet
+        // vestingVault,
+        vesteeWallet,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
       })
       .signers(signers)
       .preInstructions(preInstructions)

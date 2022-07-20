@@ -19,26 +19,27 @@ pub struct CreateVestingSchedule<'info> {
         space = Vesting::space(),
     )]
     pub vesting: Account<'info, Vesting>,
+    // TODO: we are in this constraint!
     /// CHECK:
     #[account(
         seeds = [Vesting::SIGNER_PDA_PREFIX, vesting.key().as_ref()],
         bump
     )]
     pub vesting_signer: AccountInfo<'info>,
-    #[account(
-        init,
-        payer = admin,
-        space = TokenAccount::LEN,
-        owner = token_program.key(),
-        seeds = [Vesting::VAULT_PREFIX, vesting.key().as_ref()],
-        bump,
-    )]
-    pub vesting_vault: Account<'info, TokenAccount>,
+    // #[account(
+    //     init,
+    //     payer = admin,
+    //     space = TokenAccount::LEN,
+    //     owner = token_program.key(),
+    //     seeds = [Vesting::VAULT_PREFIX, vesting.key().as_ref()],
+    //     bump,
+    // )]
+    // pub vesting_vault: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
-    #[account(
-        constraint = vestee_wallet.mint == mint.key()
-        @ err::acc("Vestee wallet must of correct mint")
-    )]
+    // #[account(
+    //     constraint = vestee_wallet.mint == mint.key()
+    //     @ err::acc("Vestee wallet must of correct mint")
+    // )]
     pub vestee_wallet: Account<'info, TokenAccount>,
     // TODO: Are these going to be needed?
     pub token_program: Program<'info, Token>,
@@ -55,46 +56,46 @@ pub fn handle(
     end_ts: i64,
     period_count: u64,
 ) -> Result<()> {
-    let vesting_signer_bump_seed = *ctx.bumps.get("vesting_signer").unwrap();
-    let accs = ctx.accounts;
+    // let vesting_signer_bump_seed = *ctx.bumps.get("vesting_signer").unwrap();
+    // let accs = ctx.accounts;
 
-    accs.vesting.beneficiary = accs.vestee_wallet.key();
-    accs.vesting.mint = accs.mint.key();
-    accs.vesting.vault = accs.vesting_vault.key();
+    // accs.vesting.beneficiary = accs.vestee_wallet.key();
+    // accs.vesting.mint = accs.mint.key();
+    // accs.vesting.vault = accs.vesting_vault.key();
 
-    accs.vesting.total_vesting_amount = vesting_amount;
+    // accs.vesting.total_vesting_amount = vesting_amount;
 
-    accs.vesting.start_ts = start_ts;
-    accs.vesting.end_ts = end_ts;
-    accs.vesting.cliff_end_ts = cliff_end_ts;
-    accs.vesting.period_count = period_count;
+    // accs.vesting.start_ts = start_ts;
+    // accs.vesting.end_ts = end_ts;
+    // accs.vesting.cliff_end_ts = cliff_end_ts;
+    // accs.vesting.period_count = period_count;
+    // panic!();
+    // msg!("Initializing vesting vault");
 
-    msg!("Initializing vesting vault");
-
-    let signer_seed = &[
-        Vesting::SIGNER_PDA_PREFIX,
-        &accs.vesting.key().to_bytes()[..],
-        &[vesting_signer_bump_seed],
-    ];
-    token::initialize_account(
-        accs.as_init_vesting_vault_context()
-            .with_signer(&[&signer_seed[..]]),
-    )?;
+    // let signer_seed = &[
+    //     Vesting::SIGNER_PDA_PREFIX,
+    //     &accs.vesting.key().to_bytes()[..],
+    //     &[vesting_signer_bump_seed],
+    // ];
+    // token::initialize_account(
+    //     accs.as_init_vesting_vault_context()
+    //         .with_signer(&[&signer_seed[..]]),
+    // )?;
 
     Ok(())
 }
 
-impl<'info> CreateVestingSchedule<'info> {
-    pub fn as_init_vesting_vault_context(
-        &self,
-    ) -> CpiContext<'_, '_, '_, 'info, token::InitializeAccount<'info>> {
-        let cpi_accounts = token::InitializeAccount {
-            mint: self.mint.to_account_info(),
-            authority: self.vesting_signer.to_account_info(),
-            rent: self.rent.to_account_info(),
-            account: self.vesting_vault.to_account_info(),
-        };
-        let cpi_program = self.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
-    }
-}
+// impl<'info> CreateVestingSchedule<'info> {
+//     pub fn as_init_vesting_vault_context(
+//         &self,
+//     ) -> CpiContext<'_, '_, '_, 'info, token::InitializeAccount<'info>> {
+//         let cpi_accounts = token::InitializeAccount {
+//             mint: self.mint.to_account_info(),
+//             authority: self.vesting_signer.to_account_info(),
+//             rent: self.rent.to_account_info(),
+//             account: self.vesting_vault.to_account_info(),
+//         };
+//         let cpi_program = self.token_program.to_account_info();
+//         CpiContext::new(cpi_program, cpi_accounts)
+//     }
+// }

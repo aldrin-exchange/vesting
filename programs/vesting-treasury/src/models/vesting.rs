@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::mem;
 
 #[derive(Default, Debug)]
 #[account]
@@ -36,7 +37,35 @@ impl Vesting {
     pub const SIGNER_PDA_PREFIX: &'static [u8; 6] = b"signer";
 
     pub fn space() -> usize {
-        //TODO: this is a placeholder for the timebeing
-        8_usize
+        let discriminant = 8;
+        let beneficiary = 32;
+        let mint = 32;
+        let vault = 32;
+
+        let total_vesting_amount = mem::size_of::<TokenAmount>();
+        let cumulative_vested_amount = mem::size_of::<TokenAmount>();
+        let cumulative_withdrawn_amount = mem::size_of::<TokenAmount>();
+        let vesting_vault_balance = mem::size_of::<TokenAmount>();
+        let unfunded_liabilities = mem::size_of::<TokenAmount>();
+
+        let start_ts = 32;
+        let end_ts = 32;
+        let cliff_end_ts = 32;
+        let period_count = 32;
+
+        discriminant
+            + beneficiary
+            + mint
+            + vault
+            + mint
+            + total_vesting_amount
+            + cumulative_vested_amount
+            + cumulative_withdrawn_amount
+            + vesting_vault_balance
+            + unfunded_liabilities
+            + start_ts
+            + end_ts
+            + cliff_end_ts
+            + period_count
     }
 }
