@@ -1,5 +1,5 @@
 //! Initializes new [`Vesting`] account. After this call,
-//! the authority can fund the vesting vault such that the tokens
+//! the admin can fund the vesting vault such that the tokens
 //! become available to the beneficiary as they vest over time.
 use crate::prelude::*;
 
@@ -11,18 +11,15 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount};
 #[derive(Accounts)]
 pub struct CreateVestingSchedule<'info> {
     #[account(mut)]
-    pub program_authority: Signer<'info>,
-    #[account(
-        constraint = treasury.programdata_address()? == Some(program_authority.key())
-            @ err::acc("Signer isn't program's authority"),
-    )]
-    pub treasury: Program<'info, crate::program::VestingTreasury>,
+    pub admin: Signer<'info>,
+    /// CHECK:
     #[account(
         init,
-        payer = program_authority,
+        payer = admin,
         space = Vesting::space(),
     )]
     pub vesting: Account<'info, Vesting>,
+    /// CHECK:
     #[account(
         seeds = [Vesting::SIGNER_PDA_PREFIX, vesting.key().as_ref()],
         bump
@@ -30,7 +27,7 @@ pub struct CreateVestingSchedule<'info> {
     pub vesting_signer: AccountInfo<'info>,
     #[account(
         init,
-        payer = program_authority,
+        payer = admin,
         space = TokenAccount::LEN,
         owner = token_program.key(),
         seeds = [Vesting::VAULT_PREFIX, vesting.key().as_ref()],
@@ -52,7 +49,7 @@ pub struct CreateVestingSchedule<'info> {
 
 pub fn handle(
     ctx: Context<CreateVestingSchedule>,
-    vesting_amount: u64,
+    vesting_amount: TokenAmount,
     start_ts: i64,
     cliff_end_ts: i64,
     end_ts: i64,
@@ -65,7 +62,7 @@ pub fn handle(
     accs.vesting.mint = accs.mint.key();
     accs.vesting.vault = accs.vesting_vault.key();
 
-    accs.vesting.total_vesting_amount = TokenAmount::new(vesting_amount);
+    accs.vesting.total_vesting_amount = vesting_amount;
 
     accs.vesting.start_ts = start_ts;
     accs.vesting.end_ts = end_ts;

@@ -14,7 +14,7 @@ pub mod vesting_treasury {
 
     pub fn create_vesting_schedule(
         ctx: Context<CreateVestingSchedule>,
-        vesting_amount: u64,
+        vesting_amount: TokenAmount,
         start_ts: i64,
         cliff_end_ts: i64,
         end_ts: i64,
