@@ -9,11 +9,12 @@ crate-type = ["cdylib", "lib"]
 name = "vesting_treasury"
 
 [features]
+cpi = ["no-entrypoint"]
+default = []
+dev = []
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-cpi = ["no-entrypoint"]
-default = []
 
 [dependencies]
 anchor-lang = "0.25.0"
