@@ -3,7 +3,32 @@ use crate::prelude::*;
 #[derive(Default, Debug)]
 #[account]
 pub struct Vesting {
-    pub admin: Pubkey,
+    /// The vestee of this Vesting account.
+    pub beneficiary: Pubkey,
+    /// The mint of the SPL token locked up.
+    pub mint: Pubkey,
+    /// Address of the account's token vault.
+    pub vault: Pubkey,
+    /// The total amount that will vest over time
+    pub total_vesting_amount: u64,
+    /// Amount that is vested thus far
+    pub cumulative_vested_amount: u64,
+    /// Amount that has been withdrawn thus far
+    pub cumulative_withdrawn_amount: u64,
+    /// Current amount sitting in the vesting vault
+    pub vesting_vault_balance: u64,
+    /// Current amount of vested tokens that is unfunded
+    pub unfunded_liabilities: u64,
+    /// The start time in Unix Timestamp of the vesting period
+    pub start_ts: i32,
+    /// The time in Unix Timestamp at which all tokens are vested.
+    pub end_ts: i32,
+    /// The time at which the cliff period ends, if any.
+    pub cliff_end_ts: i32,
+    /// The number of times vesting will occur. For example, if vesting
+    /// is once a year over seven years, this will be 7. This excludes the
+    /// the cliff period.
+    pub period_count: u64,
 }
 
 impl Vesting {
