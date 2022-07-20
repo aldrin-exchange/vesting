@@ -1,8 +1,10 @@
+//! Initializes new [`Vesting`] account. After this call,
+//! the authority can fund the vesting vault such that the tokens
+//! become available to the beneficiary as they vest over time.
 use crate::prelude::*;
 
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::{self, Mint, Token, TokenAccount};
 
-// TODO: not forget to add anchor_spl to changelog
 // TODO: if program_authority will be a multisig account, does it
 // make sense to be the payer of the init accounts?
 
@@ -48,6 +50,54 @@ pub struct CreateVestingSchedule<'info> {
     pub rent: AccountInfo<'info>,
 }
 
-pub fn handle(ctx: Context<CreateVestingSchedule>) -> Result<()> {
+pub fn handle(
+    ctx: Context<CreateVestingSchedule>,
+    vesting_amount: u64,
+    start_ts: i64,
+    cliff_end_ts: i64,
+    end_ts: i64,
+    period_count: u64,
+) -> Result<()> {
+    let vesting_signer_bump_seed = *ctx.bumps.get("vesting_signer").unwrap();
+    let accs = ctx.accounts;
+
+    accs.vesting.beneficiary = accs.vestee_wallet.key();
+    accs.vesting.mint = accs.mint.key();
+    accs.vesting.vault = accs.vesting_vault.key();
+
+    accs.vesting.total_vesting_amount = TokenAmount::new(vesting_amount);
+
+    accs.vesting.start_ts = start_ts;
+    accs.vesting.end_ts = end_ts;
+    accs.vesting.cliff_end_ts = cliff_end_ts;
+    accs.vesting.period_count = period_count;
+
+    msg!("Initializing vesting vault");
+
+    let signer_seed = &[
+        Vesting::SIGNER_PDA_PREFIX,
+        &accs.vesting.key().to_bytes()[..],
+        &[vesting_signer_bump_seed],
+    ];
+    token::initialize_account(
+        accs.as_init_vesting_vault_context()
+            .with_signer(&[&signer_seed[..]]),
+    )?;
+
     Ok(())
+}
+
+impl<'info> CreateVestingSchedule<'info> {
+    pub fn as_init_vesting_vault_context(
+        &self,
+    ) -> CpiContext<'_, '_, '_, 'info, token::InitializeAccount<'info>> {
+        let cpi_accounts = token::InitializeAccount {
+            mint: self.mint.to_account_info(),
+            authority: self.vesting_signer.to_account_info(),
+            rent: self.rent.to_account_info(),
+            account: self.vesting_vault.to_account_info(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
 }

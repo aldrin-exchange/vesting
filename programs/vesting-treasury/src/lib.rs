@@ -12,7 +12,21 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod vesting_treasury {
     use super::*;
 
-    pub fn create_vesting_schedule(ctx: Context<CreateVestingSchedule>) -> Result<()> {
-        endpoints::create_vesting_schedule::handle(ctx)
+    pub fn create_vesting_schedule(
+        ctx: Context<CreateVestingSchedule>,
+        vesting_amount: u64,
+        start_ts: i64,
+        cliff_end_ts: i64,
+        end_ts: i64,
+        period_count: u64,
+    ) -> Result<()> {
+        endpoints::create_vesting_schedule::handle(
+            ctx,
+            vesting_amount,
+            start_ts,
+            cliff_end_ts,
+            end_ts,
+            period_count,
+        )
     }
 }
