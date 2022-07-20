@@ -39,9 +39,9 @@ program:
       - target
   artifacts:
     paths:
-      - target/deploy/vesting-treasury.so
-      - target/idl/vesting-treasury.json
-      - target/types/vesting-treasury.ts
+      - target/deploy/vesting_treasury.so
+      - target/idl/vesting_treasury.json
+      - target/types/vesting_treasury.ts
 
   # manual trigger on feature branches to save CI minutes
   rules:
