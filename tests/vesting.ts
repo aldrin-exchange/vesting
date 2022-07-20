@@ -36,6 +36,75 @@ export class Vesting {
     //
   }
 
+  public static async init(
+    input: Partial<InitVestingArgs> = {},
+    vestingAmount: number,
+    startTs: number,
+    cliffEndTs: number,
+    endTs: number,
+    periodCount: number,
+    ): Promise<Vesting> {
+    const vestingKeypair = input.keypair ?? Keypair.generate();
+
+    const vestingSignerPda =
+      input.pda ??
+      (await (async () => {
+        const [pda, _] = await Vesting.signerFrom(vestingKeypair.publicKey);
+        return pda;
+      })());
+
+      const [vestingVaultPda, _] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault"), vestingKeypair.publicKey.toBytes()],
+        vesting.programId
+      );
+
+      const vestingVault = input.vestingVault ?? vestingVaultPda;
+
+      const vesteeWallet = input.vesteeWallet ?? Keypair.generate().publicKey;
+
+      const adminKeypair = input.adminKeypair ?? payer;
+      const mint = input.mint ?? (await (async () => {
+        return createMint(provider.connection, payer, adminKeypair.publicKey, null, 6);
+      })());
+
+    const skipAdminSignature = input.skipAdminSignature ?? false;
+    const skipCreateVesting = input.skipCreateVesting ?? false;
+
+    const signers = [];
+    if (!skipAdminSignature) {
+      signers.push(adminKeypair);
+    }
+
+    const preInstructions = [];
+    if (!skipCreateVesting) {
+      preInstructions.push(
+        await vesting.account.vesting.createInstruction(vestingKeypair)
+      );
+    }
+
+    await vesting.methods
+      .createVestingSchedule(
+        {amount: new BN(vestingAmount)},
+        new BN(startTs),
+        new BN(cliffEndTs),
+        new BN(endTs),
+        new BN(periodCount),
+      )
+      .accounts({
+        admin: adminKeypair.publicKey,
+        vesting: vestingKeypair.publicKey,
+        vestingSigner: vestingSignerPda,
+        mint,
+        vestingVault,
+        vesteeWallet
+      })
+      .signers(signers)
+      .preInstructions(preInstructions)
+      .rpc();
+
+    return new Vesting(vestingKeypair, adminKeypair, mint);
+  }
+
   public async fetch() {
     return vesting.account.vesting.fetch(this.id);
   }
