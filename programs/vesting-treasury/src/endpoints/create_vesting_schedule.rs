@@ -5,20 +5,17 @@ use crate::prelude::*;
 
 use anchor_spl::token::{self, Mint, Token, TokenAccount};
 
-// TODO: if program_authority will be a multisig account, does it
-// make sense to be the payer of the init accounts?
-
 #[derive(Accounts)]
 pub struct CreateVestingSchedule<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
     /// CHECK:
-    #[account(zero)]
     // #[account(
     //     init,
     //     payer = admin,
     //     space = Vesting::space()
     // )]
+    #[account(zero)]
     pub vesting: Account<'info, Vesting>,
     /// CHECK:
     #[account(
