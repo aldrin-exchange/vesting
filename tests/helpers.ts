@@ -16,8 +16,21 @@ export async function errLogs(job: Promise<unknown>): Promise<string> {
     await job;
   } catch (error) {
     if (!Array.isArray(error.logs)) {
-      console.log("No logs on the error:", error);
       throw new Error(`No logs on the error object`);
+    }
+
+    return String(error.logs);
+  }
+
+  throw new Error("Expected promise to fail");
+}
+
+export async function getErr(job: Promise<unknown>): Promise<string> {
+  try {
+    await job;
+  } catch (error) {
+    if (!Array.isArray(error.logs)) {
+      return String(error);
     }
 
     return String(error.logs);

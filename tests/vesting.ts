@@ -22,6 +22,11 @@ export interface InitVestingArgs {
   skipAdminSignature: boolean;
   skipKeypairSignature: boolean;
   skipCreateVesting: boolean;
+  vestingAmount: number;
+  startTs: number;
+  cliffEndTs: number;
+  endTs: number;
+  periodCount: number;
 }
 
 
@@ -40,13 +45,8 @@ export class Vesting {
 
   public static async init(
     input: Partial<InitVestingArgs> = {},
-    vestingAmount: number,
-    startTs: number,
-    cliffEndTs: number,
-    endTs: number,
-    periodCount: number,
     ): Promise<Vesting> {
-    const adminKeypair = input.adminKeypair ?? payer;
+    const adminKeypair = input.adminKeypair ?? Keypair.generate();
     await airdrop(adminKeypair.publicKey);
     const vestingKeypair = input.keypair ?? Keypair.generate();
     const skipAdminSignature = input.skipAdminSignature ?? false;
@@ -93,14 +93,20 @@ export class Vesting {
         return wallet;
     })());
 
-    
+
+    const vestingAmount = input.vestingAmount ?? 10_000;
+    const startTs = input.startTs ?? 1577836801;
+    const cliffEndTs = input.cliffEndTs ?? 1609459201;
+    const endTs = input.endTs ?? 1609459201;
+    const periodCount = input.periodCount ?? 36;
+
     const preInstructions = [];
     if (!skipCreateVesting) {
       preInstructions.push(
         await vesting.account.vesting.createInstruction(vestingKeypair)
       );
     }
-    
+
     const signers = [];
     if (!skipAdminSignature) {
       signers.push(adminKeypair);

@@ -48,6 +48,25 @@ pub fn handle(
     end_ts: TimeStamp,
     period_count: u64,
 ) -> Result<()> {
+    if start_ts.time > cliff_end_ts.time {
+        return Err(error!(err::arg(
+            "The cliff end timestamp cannot be before the start timestamp"
+        )));
+    }
+
+    if start_ts.time >= end_ts.time {
+        return Err(error!(err::arg(
+            "The start timestamp cannot be after the end timestamp"
+        )));
+    }
+
+    // #[msg("Vesting end must be greater than the current unix timestamp.")]
+    // InvalidTimestamp,
+    // #[msg("The number of vesting periods must be greater than zero.")]
+    // InvalidPeriod,
+    // #[msg("The vesting deposit amount must be greater than zero.")]
+    // InvalidDepositAmount,
+
     let vesting_signer_bump_seed = *ctx.bumps.get("vesting_signer").unwrap();
 
     let accs = ctx.accounts;
