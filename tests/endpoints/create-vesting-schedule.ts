@@ -10,28 +10,28 @@ import { PublicKeyword } from "typescript";
 
 export function test() {
   describe("create_vesting_schedules", () => {
-    // let vesteeWallet: PublicKey;
-    // let vestingMint: PublicKey;
-    // const adminKeypair: Keypair = Keypair.generate();
+    let vesteeWallet: PublicKey;
+    let vestingMint: PublicKey;
 
-    // beforeEach("create vesting mint", async () => {
-    //   vestingMint = await createMint(
-    //     provider.connection,
-    //     payer,
-    //     payer.publicKey,
-    //     null,
-    //     9
-    //   );
-    // });
+    beforeEach("create vesting mint", async () => {
+      vestingMint = await createMint(
+        provider.connection,
+        payer,
+        payer.publicKey,
+        null,
+        9
+      );
+    });
     
-    // beforeEach("create vestee wallet", async () => {
-    //   vesteeWallet = await createAccount(
-    //     provider.connection,
-    //     payer,
-    //     vestingMint,
-    //     payer.publicKey
-    //   );
-    // });
+    beforeEach("create vestee wallet", async () => {
+      vesteeWallet = await createAccount(
+        provider.connection,
+        payer,
+        vestingMint,
+        payer.publicKey
+      );
+
+    });
 
     // it("fails if wallet account isn't initialized", async () => {
     //   const fakeWallet = await createAccount(
@@ -86,11 +86,10 @@ export function test() {
     // });
 
     it.only("works", async () => {
-      const logs = await errLogs(
-        Vesting.init(
+      const vesting = await Vesting.init(
           {
-            // vesteeWallet,
-            // mint: vestingMint
+            vesteeWallet,
+            mint: vestingMint,
           },
           10_000,
           1577836801, // start
@@ -98,21 +97,24 @@ export function test() {
           1609459201, // end
           36, // periods
         )
-      );
 
-      console.log("Logs: ", logs);
+      const vestingInfo = await vesting.fetch();
+      console.log(vestingInfo);
+      console.log(vestingInfo.totalVestingAmount.amount.toNumber());
 
-      await Vesting.init(
-        {
-        },
-        10_000,
-        1577836801, // start
-        1609459201, // cliff end
-        1609459201, // end
-        36, // periods
-      );
-      // console.log(logs);
-      // expect(logs).to.contain("range end index 8");
+      expect(vestingInfo.totalVestingAmount.amount.toNumber()).to.eq(10_000);
+      expect(vestingInfo.startTs.time.toNumber()).to.eq(1577836801);
+      expect(vestingInfo.cliffEndTs.time.toNumber()).to.eq(1609459201);
+      expect(vestingInfo.endTs.time.toNumber()).to.eq(1609459201);
+      expect(vestingInfo.periodCount.toNumber()).to.eq(36);
+      expect(vestingInfo.beneficiary).to.deep.eq(vesteeWallet);
+      expect(vestingInfo.mint).to.deep.eq(vestingMint);
+      expect(vestingInfo.vault).to.deep.eq(await vesting.vestingVault());
+      expect(vestingInfo.cumulativeVestedAmount.amount.toNumber()).to.eq(0);
+      expect(vestingInfo.cumulativeWithdrawnAmount.amount.toNumber()).to.eq(0);
+      expect(vestingInfo.vestingVaultBalance.amount.toNumber()).to.eq(0);
+      expect(vestingInfo.unfundedLiabilities.amount.toNumber()).to.eq(0);
+
     });
   
     // it("fails if farm account already exists", async () => {

@@ -15,9 +15,9 @@ pub mod vesting_treasury {
     pub fn create_vesting_schedule(
         ctx: Context<CreateVestingSchedule>,
         vesting_amount: TokenAmount,
-        start_ts: i64,
-        cliff_end_ts: i64,
-        end_ts: i64,
+        start_ts: TimeStamp,
+        cliff_end_ts: TimeStamp,
+        end_ts: TimeStamp,
         period_count: u64,
     ) -> Result<()> {
         endpoints::create_vesting_schedule::handle(

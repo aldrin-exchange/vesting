@@ -113,9 +113,9 @@ export class Vesting {
     await vesting.methods
       .createVestingSchedule(
         {amount: new BN(vestingAmount)},
-        new BN(startTs),
-        new BN(cliffEndTs),
-        new BN(endTs),
+        {time: new BN(startTs)},
+        {time: new BN(cliffEndTs)},
+        {time: new BN(endTs)},
         new BN(periodCount),
       )
       .accounts({

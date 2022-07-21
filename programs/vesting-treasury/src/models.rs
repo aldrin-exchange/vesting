@@ -13,6 +13,13 @@ pub struct TokenAmount {
 #[derive(
     AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd,
 )]
+pub struct TimeStamp {
+    pub time: i64,
+}
+
+#[derive(
+    AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd,
+)]
 pub struct Slot {
     pub slot: u64,
 }

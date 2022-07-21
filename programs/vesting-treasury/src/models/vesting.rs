@@ -21,11 +21,11 @@ pub struct Vesting {
     /// Current amount of vested tokens that is unfunded
     pub unfunded_liabilities: TokenAmount,
     /// The start time in Unix Timestamp of the vesting period
-    pub start_ts: i64,
+    pub start_ts: TimeStamp,
     /// The time in Unix Timestamp at which all tokens are vested.
-    pub end_ts: i64,
+    pub end_ts: TimeStamp,
     /// The time at which the cliff period ends, if any.
-    pub cliff_end_ts: i64,
+    pub cliff_end_ts: TimeStamp,
     /// The number of times vesting will occur. For example, if vesting
     /// is once a year over seven years, this will be 7. This excludes the
     /// the cliff period.
@@ -52,23 +52,6 @@ impl Vesting {
         let end_ts = mem::size_of::<i32>();
         let cliff_end_ts = mem::size_of::<i32>();
         let period_count = mem::size_of::<i32>();
-
-        let result = discriminant
-            + beneficiary
-            + mint
-            + vault
-            + mint
-            + total_vesting_amount
-            + cumulative_vested_amount
-            + cumulative_withdrawn_amount
-            + vesting_vault_balance
-            + unfunded_liabilities
-            + start_ts
-            + end_ts
-            + cliff_end_ts
-            + period_count;
-
-        // panic!("Result is {}", result);
 
         discriminant
             + beneficiary

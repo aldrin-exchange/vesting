@@ -10,11 +10,6 @@ pub struct CreateVestingSchedule<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
     /// CHECK:
-    // #[account(
-    //     init,
-    //     payer = admin,
-    //     space = Vesting::space()
-    // )]
     #[account(zero)]
     pub vesting: Account<'info, Vesting>,
     /// CHECK:
@@ -23,6 +18,7 @@ pub struct CreateVestingSchedule<'info> {
         bump
     )]
     pub vesting_signer: AccountInfo<'info>,
+    /// CHECK:
     #[account(
         init,
         payer = admin,
@@ -31,7 +27,7 @@ pub struct CreateVestingSchedule<'info> {
         seeds = [Vesting::VAULT_PREFIX, vesting.key().as_ref()],
         bump,
     )]
-    pub vesting_vault: Account<'info, TokenAccount>,
+    pub vesting_vault: AccountInfo<'info>,
     pub mint: Account<'info, Mint>,
     #[account(
         constraint = vestee_wallet.mint == mint.key()
@@ -47,9 +43,9 @@ pub struct CreateVestingSchedule<'info> {
 pub fn handle(
     ctx: Context<CreateVestingSchedule>,
     vesting_amount: TokenAmount,
-    start_ts: i64,
-    cliff_end_ts: i64,
-    end_ts: i64,
+    start_ts: TimeStamp,
+    cliff_end_ts: TimeStamp,
+    end_ts: TimeStamp,
     period_count: u64,
 ) -> Result<()> {
     let vesting_signer_bump_seed = *ctx.bumps.get("vesting_signer").unwrap();
