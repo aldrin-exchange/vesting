@@ -10,70 +10,100 @@ import { PublicKeyword } from "typescript";
 
 export function test() {
   describe("create_vesting_schedules", () => {
-    let vesteeWallet: PublicKey;
-    let vestingMint: PublicKey;
-    const adminKeypair: Keypair = Keypair.generate();
+    // let vesteeWallet: PublicKey;
+    // let vestingMint: PublicKey;
+    // const adminKeypair: Keypair = Keypair.generate();
 
-    beforeEach("create vesting mint", async () => {
-      vestingMint = await createMint(
-        provider.connection,
-        payer,
-        payer.publicKey,
-        null,
-        9
-      );
-    });
+    // beforeEach("create vesting mint", async () => {
+    //   vestingMint = await createMint(
+    //     provider.connection,
+    //     payer,
+    //     payer.publicKey,
+    //     null,
+    //     9
+    //   );
+    // });
     
-    beforeEach("create vestee wallet", async () => {
-      vesteeWallet = await createAccount(
-        provider.connection,
-        payer,
-        vestingMint,
-        payer.publicKey
-      );
-    });
+    // beforeEach("create vestee wallet", async () => {
+    //   vesteeWallet = await createAccount(
+    //     provider.connection,
+    //     payer,
+    //     vestingMint,
+    //     payer.publicKey
+    //   );
+    // });
 
-    it("fails if wallet account isn't initialized", async () => {
-      const fakeWallet = await createAccount(
-        provider.connection,
-        payer,
-        vestingMint,
-        payer.publicKey
+    // it("fails if wallet account isn't initialized", async () => {
+    //   const fakeWallet = await createAccount(
+    //     provider.connection,
+    //     payer,
+    //     vestingMint,
+    //     payer.publicKey
+    //   );
+
+    //   const logs = await errLogs(Vesting.init(
+    //     {
+    //       vesteeWallet: fakeWallet
+    //     },
+    //     10_000,
+    //     1577836801, // start
+    //     1609459201, // cliff end
+    //     1609459201, // end
+    //     36, // periods
+    //   ));
+    //   console.log(logs);
+    //   // expect(logs).to.contain("range end index 8");
+    // });
+
+    // it("fails if wallet mint isn't equal to vesting mint", async () => {
+    //   const fakeMint = await createMint(
+    //     provider.connection,
+    //     payer,
+    //     payer.publicKey,
+    //     null,
+    //     9
+    //   );
+
+    //   const fakeWallet = await createAccount(
+    //     provider.connection,
+    //     payer,
+    //     fakeMint,
+    //     payer.publicKey
+    //   );
+
+    //   await Vesting.init(
+    //     {
+    //       vesteeWallet: fakeWallet
+    //     },
+    //     10_000,
+    //     1577836801, // start
+    //     1609459201, // cliff end
+    //     1609459201, // end
+    //     36, // periods
+    //   );
+    //   // console.log(logs);
+    //   // expect(logs).to.contain("range end index 8");
+    // });
+
+    it.only("works", async () => {
+      const logs = await errLogs(
+        Vesting.init(
+          {
+            // vesteeWallet,
+            // mint: vestingMint
+          },
+          10_000,
+          1577836801, // start
+          1609459201, // cliff end
+          1609459201, // end
+          36, // periods
+        )
       );
 
-      const logs = await errLogs(Vesting.init(
-        {
-          vesteeWallet: fakeWallet
-        },
-        10_000,
-        1577836801, // start
-        1609459201, // cliff end
-        1609459201, // end
-        36, // periods
-      ));
-      console.log(logs);
-      // expect(logs).to.contain("range end index 8");
-    });
-
-    it.only("fails if wallet mint isn't equal to vesting mint", async () => {
-      const fakeMint = await createMint(
-        provider.connection,
-        payer,
-        payer.publicKey,
-        null,
-        9
-      );
-
-      const fakeWallet = await createAccount(
-        provider.connection,
-        payer,
-        fakeMint,
-        payer.publicKey
-      );
+      console.log("Logs: ", logs);
 
       await Vesting.init(
         {
-          vesteeWallet: fakeWallet
         },
         10_000,
         1577836801, // start

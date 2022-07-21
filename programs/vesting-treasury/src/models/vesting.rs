@@ -48,10 +48,27 @@ impl Vesting {
         let vesting_vault_balance = mem::size_of::<TokenAmount>();
         let unfunded_liabilities = mem::size_of::<TokenAmount>();
 
-        let start_ts = 32;
-        let end_ts = 32;
-        let cliff_end_ts = 32;
-        let period_count = 32;
+        let start_ts = mem::size_of::<i32>();
+        let end_ts = mem::size_of::<i32>();
+        let cliff_end_ts = mem::size_of::<i32>();
+        let period_count = mem::size_of::<i32>();
+
+        let result = discriminant
+            + beneficiary
+            + mint
+            + vault
+            + mint
+            + total_vesting_amount
+            + cumulative_vested_amount
+            + cumulative_withdrawn_amount
+            + vesting_vault_balance
+            + unfunded_liabilities
+            + start_ts
+            + end_ts
+            + cliff_end_ts
+            + period_count;
+
+        // panic!("Result is {}", result);
 
         discriminant
             + beneficiary

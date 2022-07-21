@@ -1,4 +1,4 @@
-import { vesting, payer, provider } from "./helpers";
+import { vesting, payer, provider, airdrop } from "./helpers";
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   createAccount,
@@ -20,6 +20,7 @@ export interface InitVestingArgs {
   vesteeWallet: PublicKey;
   mint: PublicKey;
   skipAdminSignature: boolean;
+  skipKeypairSignature: boolean;
   skipCreateVesting: boolean;
 }
 
@@ -45,7 +46,12 @@ export class Vesting {
     endTs: number,
     periodCount: number,
     ): Promise<Vesting> {
+    const adminKeypair = input.adminKeypair ?? payer;
+    await airdrop(adminKeypair.publicKey);
     const vestingKeypair = input.keypair ?? Keypair.generate();
+    const skipAdminSignature = input.skipAdminSignature ?? false;
+    const skipKeypairSignature = input.skipKeypairSignature ?? false;
+    const skipCreateVesting = input.skipCreateVesting ?? false;
 
     const vestingSignerPda =
       input.pda ??
@@ -54,27 +60,61 @@ export class Vesting {
         return pda;
       })());
 
-      const [vestingVaultPda, _] = PublicKey.findProgramAddressSync(
-        [Buffer.from("vault"), vestingKeypair.publicKey.toBytes()],
-        vesting.programId
+    const mint = 
+      input.mint ?? 
+      (await (async () => {
+      return createMint(
+        provider.connection,
+        payer,
+        adminKeypair.publicKey,
+        null,
+        6
       );
+    })());
 
-      const vestingVault = input.vestingVault ?? vestingVaultPda;
+    const vestingVault =
+      input.vestingVault ??
+      (await (async () => {
+        const [pda, _bumpSeed] = PublicKey.findProgramAddressSync(
+          [Buffer.from("vault"), vestingKeypair.publicKey.toBytes()],
+          vesting.programId
+        );
+        return pda;
+    })());
 
-      const vesteeWallet = input.vesteeWallet ?? Keypair.generate().publicKey;
+    const vestingVault2 = await createAccount(
+      provider.connection,
+      payer,
+      mint,
+      Keypair.generate().publicKey
+    );
+      
+    const vesteeWallet = input.vesteeWallet ?? 
+      (await (async () => {
+        const wallet = await createAccount(
+          provider.connection,
+          payer,
+          mint,
+          payer.publicKey
+        )
+        return wallet;
+    })());
 
-      const adminKeypair = input.adminKeypair ?? payer;
-      const mint = input.mint ?? (await (async () => {
-        return createMint(provider.connection, payer, adminKeypair.publicKey, null, 6);
-      })());
-
-    const skipAdminSignature = input.skipAdminSignature ?? false;
-    const skipCreateVesting = input.skipCreateVesting ?? false;
-
+    
     const preInstructions = [];
+    if (!skipCreateVesting) {
+      preInstructions.push(
+        await vesting.account.vesting.createInstruction(vestingKeypair)
+      );
+    }
+    
     const signers = [];
     if (!skipAdminSignature) {
       signers.push(adminKeypair);
+    }
+
+    if (!skipKeypairSignature) {
+      signers.push(vestingKeypair);
     }
 
     await vesting.methods
@@ -87,13 +127,13 @@ export class Vesting {
       )
       .accounts({
         admin: adminKeypair.publicKey,
-        // vesting: vestingKeypair.publicKey,
+        vesting: vestingKeypair.publicKey,
         vestingSigner: vestingSignerPda,
         mint,
-        // vestingVault,
+        vestingVault: vestingVault,
         vesteeWallet,
         tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
+        // systemProgram: SystemProgram.programId,
       })
       .signers(signers)
       .preInstructions(preInstructions)
