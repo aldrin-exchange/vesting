@@ -81,13 +81,6 @@ export class Vesting {
         );
         return pda;
     })());
-
-    const vestingVault2 = await createAccount(
-      provider.connection,
-      payer,
-      mint,
-      Keypair.generate().publicKey
-    );
       
     const vesteeWallet = input.vesteeWallet ?? 
       (await (async () => {
@@ -130,7 +123,7 @@ export class Vesting {
         vesting: vestingKeypair.publicKey,
         vestingSigner: vestingSignerPda,
         mint,
-        vestingVault: vestingVault,
+        vestingVault,
         vesteeWallet,
         tokenProgram: TOKEN_PROGRAM_ID,
         // systemProgram: SystemProgram.programId,
