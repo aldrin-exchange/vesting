@@ -1,15 +1,11 @@
-import * as anchor from "@project-serum/anchor";
-import { Program } from "@project-serum/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { expect } from "chai";
-import { VestingTreasury } from "../../target/types/vesting_treasury";
-import { createMint, createAccount, getAccount, mintTo, TOKEN_PROGRAM_ID} from "@solana/spl-token";
-import { errLogs, provider, payer, airdrop, getErr } from "../helpers";
+import { createMint, createAccount, TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import { errLogs, provider, payer, getErr } from "../helpers";
 import { Vesting } from "../vesting";
-import { PublicKeyword } from "typescript";
 
 export function test() {
-  describe("create_vesting_schedules", () => {
+  describe("create_vesting_schedule", () => {
     let vesteeWallet: PublicKey;
     let vestingMint: PublicKey;
 
