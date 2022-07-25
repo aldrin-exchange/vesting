@@ -31,7 +31,7 @@ pub struct CreateVestingSchedule<'info> {
     pub mint: Account<'info, Mint>,
     #[account(
         constraint = vestee_wallet.mint == mint.key()
-        @ err::acc("Vestee wallet must of correct mint")
+        @ err::acc("Vestee wallet must be of correct mint")
     )]
     pub vestee_wallet: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
@@ -59,13 +59,6 @@ pub fn handle(
             "The start timestamp cannot be after the end timestamp"
         )));
     }
-
-    // #[msg("Vesting end must be greater than the current unix timestamp.")]
-    // InvalidTimestamp,
-    // #[msg("The number of vesting periods must be greater than zero.")]
-    // InvalidPeriod,
-    // #[msg("The vesting deposit amount must be greater than zero.")]
-    // InvalidDepositAmount,
 
     let vesting_signer_bump_seed = *ctx.bumps.get("vesting_signer").unwrap();
 
