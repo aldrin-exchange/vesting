@@ -29,4 +29,8 @@ pub mod vesting_treasury {
             period_count,
         )
     }
+
+    pub fn change_vesting_wallet(ctx: Context<ChangeVestingWallet>) -> Result<()> {
+        endpoints::change_vesting_wallet::handle(ctx)
+    }
 }
