@@ -130,9 +130,9 @@ export function test() {
       // Check that the remaining values don't change from default values
       expect(vestingInfoAfter.totalVestingAmount.amount.toNumber()).to.eq(10_000);
       expect(vestingInfoAfter.startTs.time.toNumber()).to.eq(1577836801);
-      expect(vestingInfoAfter.cliffEndTs.time.toNumber()).to.eq(1609459201);
-      expect(vestingInfoAfter.endTs.time.toNumber()).to.eq(1609459201);
-      expect(vestingInfoAfter.periodCount.toNumber()).to.eq(36);
+      expect(vestingInfoAfter.cliffPeriods.toNumber()).to.eq(12);
+      expect(vestingInfoAfter.totalPeriods.toNumber()).to.eq(48);
+      expect(vestingInfoAfter.periodType).to.deep.eq({monthly : {}});
 
       expect(vestingInfoAfter.admin).to.deep.eq(adminKeypair.publicKey);
       expect(vestingInfoAfter.mint).to.deep.eq(vestingMint);
