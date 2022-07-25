@@ -24,14 +24,14 @@ pub struct Vesting {
     pub unfunded_liabilities: TokenAmount,
     /// The start time in Unix Timestamp of the vesting period
     pub start_ts: TimeStamp,
-    /// The time in Unix Timestamp at which all tokens are vested.
-    pub end_ts: TimeStamp,
-    /// The time at which the cliff period ends, if any.
-    pub cliff_end_ts: TimeStamp,
-    /// The number of times vesting will occur. For example, if vesting
-    /// is once a year over seven years, this will be 7. This excludes the
-    /// the cliff period.
-    pub period_count: u64,
+    /// The amount of periods in total in the vesting schedule
+    pub total_periods: u64,
+    /// The amount of periods in the cliff part of the schedule
+    pub cliff_periods: u64,
+    /// The type of period (i.e. Monthly, Yearly, etc.) of the vesting
+    /// schedule. This is required for computing vesting schedules depending
+    /// on different base periods
+    pub period_type: PeriodType,
 }
 
 impl Vesting {
@@ -52,9 +52,10 @@ impl Vesting {
         let unfunded_liabilities = mem::size_of::<TokenAmount>();
 
         let start_ts = mem::size_of::<i32>();
-        let end_ts = mem::size_of::<i32>();
-        let cliff_end_ts = mem::size_of::<i32>();
-        let period_count = mem::size_of::<i32>();
+
+        let total_periods = mem::size_of::<u64>();
+        let cliff_periods = mem::size_of::<u64>();
+        let period_type = mem::size_of::<PeriodType>();
 
         discriminant
             + admin
@@ -68,8 +69,34 @@ impl Vesting {
             + vesting_vault_balance
             + unfunded_liabilities
             + start_ts
-            + end_ts
-            + cliff_end_ts
-            + period_count
+            + total_periods
+            + cliff_periods
+            + period_type
+    }
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, Copy, Clone, Debug, Eq, PartialEq)]
+pub enum PeriodType {
+    Monthly,
+    Quarterly,
+    SemiAnnually,
+    Yearly,
+}
+
+impl Default for PeriodType {
+    fn default() -> Self {
+        PeriodType::Monthly
+    }
+}
+
+impl PeriodType {
+    pub fn from_u32(value: u32) -> Result<PeriodType> {
+        match value {
+            1 => Ok(PeriodType::Monthly),
+            2 => Ok(PeriodType::Quarterly),
+            3 => Ok(PeriodType::SemiAnnually),
+            4 => Ok(PeriodType::Yearly),
+            _ => Err(error!(err::arg("The period type enumeration is invalid"))),
+        }
     }
 }

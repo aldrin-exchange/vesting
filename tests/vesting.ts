@@ -24,9 +24,9 @@ export interface InitVestingArgs {
   skipCreateVesting: boolean;
   vestingAmount: number;
   startTs: number;
-  cliffEndTs: number;
-  endTs: number;
-  periodCount: number;
+  cliffPeriods: number;
+  totalPeriods: number;
+  periodType: number;
 }
 
 export interface ChangeVesteeWalletArgs {
@@ -104,9 +104,9 @@ export class Vesting {
 
     const vestingAmount = input.vestingAmount ?? 10_000;
     const startTs = input.startTs ?? 1577836801;
-    const cliffEndTs = input.cliffEndTs ?? 1609459201;
-    const endTs = input.endTs ?? 1609459201;
-    const periodCount = input.periodCount ?? 36;
+    const cliffPeriods = input.cliffPeriods ?? 12;
+    const totalPeriods = input.totalPeriods ?? 48;
+    const periodType = input.periodType ?? 1;
 
     const preInstructions = [];
     if (!skipCreateVesting) {
@@ -128,9 +128,9 @@ export class Vesting {
       .createVestingSchedule(
         {amount: new BN(vestingAmount)},
         {time: new BN(startTs)},
-        {time: new BN(cliffEndTs)},
-        {time: new BN(endTs)},
-        new BN(periodCount),
+        new BN(cliffPeriods),
+        new BN(totalPeriods),
+        periodType,
       )
       .accounts({
         admin: adminKeypair.publicKey,

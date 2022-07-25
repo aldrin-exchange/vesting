@@ -16,17 +16,17 @@ pub mod vesting_treasury {
         ctx: Context<CreateVestingSchedule>,
         vesting_amount: TokenAmount,
         start_ts: TimeStamp,
-        cliff_end_ts: TimeStamp,
-        end_ts: TimeStamp,
-        period_count: u64,
+        cliff_periods: u64,
+        total_periods: u64,
+        period_type: u32,
     ) -> Result<()> {
         endpoints::create_vesting_schedule::handle(
             ctx,
             vesting_amount,
             start_ts,
-            cliff_end_ts,
-            end_ts,
-            period_count,
+            cliff_periods,
+            total_periods,
+            period_type,
         )
     }
 
