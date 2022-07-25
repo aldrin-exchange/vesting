@@ -8,6 +8,7 @@ export function test() {
     describe("change_vesting_wallet", () => {
     const adminKeypair = Keypair.generate();
     let vesteeWallet: PublicKey;
+    let vesteeWalletNew: PublicKey;
     let vestingMint: PublicKey;
     let vesting: Vesting;
 
@@ -38,83 +39,82 @@ export function test() {
             mint: vestingMint,
           }
         )
-      });
-
-    it.only("fails if wallet account is the same", async () => {
-      // const logs = await errLogs(vesting.changeVesteeWallet({
-      //   adminKeypair,
-      //   vesteeWalletNew: vesteeWallet,
-      // }));
-      
-      // expect(logs).to.contain("AccountNotInitialized.");
     });
-
-    it("fails if wallet mint isn't equal to vesting mint", async () => {
-    //   const fakeMint = await createMint(
-    //     provider.connection,
-    //     payer,
-    //     payer.publicKey,
-    //     null,
-    //     9
-    //   );
-
-    //   const fakeWallet = await createAccount(
-    //     provider.connection,
-    //     payer,
-    //     fakeMint,
-    //     payer.publicKey
-    //   );
-
-    //   const logs = await errLogs(
-    //     Vesting.init(
-    //       {
-    //         vesteeWallet: fakeWallet,
-    //         mint: vestingMint,
-    //       }
-    //   ));
-
-    //   expect(logs).to.contain("Vestee wallet must be of correct mint");
-    });
-  
-    it("fails if vesting account does not exist", async () => {
-    //   const vesting = await Vesting.init(
-    //     {
-    //       vesteeWallet,
-    //       mint: vestingMint,
-    //     }
-    //   )
-  
-    //   const logs = await errLogs(
-    //     Vesting.init({ keypair: vesting.keypair }));
-
-    //   expect(logs).to.contain("already in use");
-    });
-  
-    it("fails if admin isn't signer", async () => {
-    //   const logs = await getErr(
-    //     Vesting.init({ skipAdminSignature: true })
-    //   );
-
-    //   expect(logs).to.contain("Signature verification failed");
-    });
-
-    it("fails if wrong admin", async () => {
-    //   const logs = await getErr(
-    //     Vesting.init({ skipKeypairSignature: true })
-    //   );
-    //   expect(logs).to.contain("Signature verification failed");
-    });
-
-    it.only("works", async () => {
-      const vestingInfoBefore = await vesting.fetch();
-    
-      const vesteeWalletNew = await createAccount(
+    beforeEach("create new vesting wallet", async () => {
+      vesteeWalletNew = await createAccount(
         provider.connection,
         payer,
         vestingMint,
         payer.publicKey,
         Keypair.generate()
       );
+    });
+
+    it("fails if wallet account is the same", async () => {
+      const logs = await errLogs(vesting.changeVesteeWallet({
+        adminKeypair,
+        vesteeWalletNew: vesteeWallet,
+      }));
+
+      expect(logs).to.contain(
+        "The new vestee wallet is the same as the current vestee wallet"
+      );
+    });
+
+    it("fails if wallet mint isn't equal to vesting mint", async () => {
+      const fakeMint = await createMint(
+        provider.connection,
+        payer,
+        payer.publicKey,
+        null,
+        9
+      );
+      const vesteeWalletNew = await createAccount(
+        provider.connection,
+        payer,
+        fakeMint,
+        payer.publicKey,
+        Keypair.generate()
+      );
+
+
+    const logs = await errLogs(vesting.changeVesteeWallet({
+      adminKeypair,
+      vesteeWalletNew: vesteeWalletNew,
+    }));
+
+    expect(logs).to.contain(
+      "The new vestee wallet mint must be of correct mint"
+    );
+    });
+  
+  
+    it("fails if admin isn't signer", async () => {
+      const logs = await getErr(
+        vesting.changeVesteeWallet({
+          vesteeWalletNew: vesteeWalletNew,
+          skipAdminSignature: true,
+        })
+      );
+
+      expect(logs).to.contain("Signature verification failed");
+    });
+
+    it("fails if wrong admin", async () => {
+      const fakeAdmin = Keypair.generate();
+
+      const logs = await getErr(
+        vesting.changeVesteeWallet({
+          vesteeWalletNew: vesteeWalletNew,
+          adminKeypair: fakeAdmin,
+        })
+      );
+
+      expect(logs).to.contain("VestingAdminMismatch");
+    });
+
+    it("works", async () => {
+      const vestingInfoBefore = await vesting.fetch();
 
       await vesting.changeVesteeWallet({
         adminKeypair,

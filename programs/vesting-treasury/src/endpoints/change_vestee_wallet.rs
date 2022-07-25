@@ -8,7 +8,6 @@ use anchor_spl::token::TokenAccount;
 
 #[derive(Accounts)]
 pub struct ChangeVesteeWallet<'info> {
-    #[account(mut)]
     pub admin: Signer<'info>,
     /// CHECK:
     #[account(mut)]
@@ -29,6 +28,11 @@ pub fn handle(ctx: Context<ChangeVesteeWallet>) -> Result<()> {
         )));
     }
 
+    if accs.vesting.vestee_wallet == accs.vestee_wallet_new.key() {
+        return Err(error!(err::acc(
+            "The new vestee wallet is the same as the current vestee wallet"
+        )));
+    }
     accs.vesting.vestee_wallet = accs.vestee_wallet_new.key();
 
     Ok(())

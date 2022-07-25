@@ -140,7 +140,6 @@ export class Vesting {
         vestingVault,
         vesteeWallet,
         tokenProgram: TOKEN_PROGRAM_ID,
-        // systemProgram: SystemProgram.programId,
       })
       .signers(signers)
       .preInstructions(preInstructions)
