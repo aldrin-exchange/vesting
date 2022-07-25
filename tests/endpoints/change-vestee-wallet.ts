@@ -1,6 +1,6 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { expect } from "chai";
-import { createMint, createAccount, TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import { createMint, createAccount} from "@solana/spl-token";
 import { errLogs, provider, payer, getErr } from "../helpers";
 import { Vesting } from "../vesting";
 
