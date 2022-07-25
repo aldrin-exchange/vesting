@@ -44,19 +44,13 @@ pub fn handle(
     ctx: Context<CreateVestingSchedule>,
     vesting_amount: TokenAmount,
     start_ts: TimeStamp,
-    cliff_end_ts: TimeStamp,
-    end_ts: TimeStamp,
-    period_count: u64,
+    cliff_periods: u64,
+    total_periods: u64,
+    period_type: u32,
 ) -> Result<()> {
-    if start_ts.time > cliff_end_ts.time {
+    if cliff_periods > total_periods {
         return Err(error!(err::arg(
-            "The cliff end timestamp cannot be before the start timestamp"
-        )));
-    }
-
-    if start_ts.time >= end_ts.time {
-        return Err(error!(err::arg(
-            "The start timestamp cannot be after the end timestamp"
+            "The number of cliff periods cannot be higher than total number of periods"
         )));
     }
 
@@ -72,9 +66,9 @@ pub fn handle(
     accs.vesting.total_vesting_amount = vesting_amount;
 
     accs.vesting.start_ts = start_ts;
-    accs.vesting.end_ts = end_ts;
-    accs.vesting.cliff_end_ts = cliff_end_ts;
-    accs.vesting.period_count = period_count;
+    accs.vesting.total_periods = total_periods;
+    accs.vesting.cliff_periods = cliff_periods;
+    // accs.vesting.period_type = PeriodType::from_u32(period_type)?;
 
     msg!("Initializing vesting vault");
 
