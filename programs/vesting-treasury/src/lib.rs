@@ -30,7 +30,7 @@ pub mod vesting_treasury {
         )
     }
 
-    pub fn change_vesting_wallet(ctx: Context<ChangeVestingWallet>) -> Result<()> {
-        endpoints::change_vesting_wallet::handle(ctx)
+    pub fn change_vestee_wallet(ctx: Context<ChangeVesteeWallet>) -> Result<()> {
+        endpoints::change_vestee_wallet::handle(ctx)
     }
 }
