@@ -69,7 +69,7 @@ export function test() {
           vesteeWallet,
           mint: vestingMint,
         }
-      )
+      );
   
       const logs = await errLogs(
         Vesting.init({ keypair: vesting.keypair }));
