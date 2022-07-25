@@ -31,7 +31,7 @@ export interface InitVestingArgs {
 
 export interface ChangeVesteeWalletArgs {
   adminKeypair: Keypair;
-  keypair: Keypair;
+  vestingKeypair: Keypair;
   vesteeWalletNew: PublicKey;
   skipAdminSignature: boolean;
   // skipKeypairSignature: boolean;
@@ -202,7 +202,8 @@ export class Vesting {
     ) {
     const adminKeypair = input.adminKeypair ?? Keypair.generate();
     await airdrop(adminKeypair.publicKey);
-    const vestingKeypair = input.keypair ?? Keypair.generate();
+
+    const vestingKeypair = input.vestingKeypair ?? this.keypair;
     const skipAdminSignature = input.skipAdminSignature ?? false;
     // const skipKeypairSignature = input.skipKeypairSignature ?? false;
     const skipCreateVesting = input.skipCreateVesting ?? false;

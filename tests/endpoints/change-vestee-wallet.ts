@@ -5,7 +5,7 @@ import { errLogs, provider, payer, getErr } from "../helpers";
 import { Vesting } from "../vesting";
 
 export function test() {
-    describe("create_vesting_schedule", () => {
+    describe("change_vesting_wallet", () => {
     const adminKeypair = Keypair.generate();
     let vesteeWallet: PublicKey;
     let vestingMint: PublicKey;
@@ -28,7 +28,6 @@ export function test() {
         vestingMint,
         payer.publicKey
       );
-
     });
 
     beforeEach("create vesting account", async () => {
@@ -39,14 +38,15 @@ export function test() {
             mint: vestingMint,
           }
         )
-  
       });
 
-    it("fails if wallet account is the same", async () => {
-    //   const fakeWallet = Keypair.generate().publicKey;
-    //   const logs = await errLogs(Vesting.init({vesteeWallet: fakeWallet}));
+    it.only("fails if wallet account is the same", async () => {
+      // const logs = await errLogs(vesting.changeVesteeWallet({
+      //   adminKeypair,
+      //   vesteeWalletNew: vesteeWallet,
+      // }));
       
-    //   expect(logs).to.contain("AccountNotInitialized.");
+      // expect(logs).to.contain("AccountNotInitialized.");
     });
 
     it("fails if wallet mint isn't equal to vesting mint", async () => {
@@ -105,34 +105,44 @@ export function test() {
     //   expect(logs).to.contain("Signature verification failed");
     });
 
-    it("works", async () => {
-    //   const adminKeypair = Keypair.generate();
-    //   const vesting = await Vesting.init(
-    //       {
-    //         adminKeypair,
-    //         vesteeWallet,
-    //         mint: vestingMint,
-    //       }
-    //     )
+    it.only("works", async () => {
+      const vestingInfoBefore = await vesting.fetch();
+    
+      const vesteeWalletNew = await createAccount(
+        provider.connection,
+        payer,
+        vestingMint,
+        payer.publicKey,
+        Keypair.generate()
+      );
 
-    //   const vestingInfo = await vesting.fetch();
+      await vesting.changeVesteeWallet({
+        adminKeypair,
+        vesteeWalletNew,
+      });
 
-    //   // These are the default amounts in the ts init method
-    //   expect(vestingInfo.totalVestingAmount.amount.toNumber()).to.eq(10_000);
-    //   expect(vestingInfo.startTs.time.toNumber()).to.eq(1577836801);
-    //   expect(vestingInfo.cliffEndTs.time.toNumber()).to.eq(1609459201);
-    //   expect(vestingInfo.endTs.time.toNumber()).to.eq(1609459201);
-    //   expect(vestingInfo.periodCount.toNumber()).to.eq(36);
+      const vestingInfoAfter = await vesting.fetch();
 
-    //   expect(vestingInfo.admin).to.deep.eq(adminKeypair.publicKey);
-    //   expect(vestingInfo.vesteeWallet).to.deep.eq(vesteeWallet);
-    //   expect(vestingInfo.mint).to.deep.eq(vestingMint);
-    //   expect(vestingInfo.vault).to.deep.eq(await vesting.vestingVault());
-    //   expect(vestingInfo.cumulativeVestedAmount.amount.toNumber()).to.eq(0);
-    //   expect(vestingInfo.cumulativeWithdrawnAmount.amount.toNumber()).to.eq(0);
-    //   expect(vestingInfo.vestingVaultBalance.amount.toNumber()).to.eq(0);
-    //   expect(vestingInfo.unfundedLiabilities.amount.toNumber()).to.eq(0);
+      // Expect wallet pubkey to change
+      expect(vestingInfoBefore.vesteeWallet).to.deep.eq(vesteeWallet);
+      expect(vestingInfoAfter.vesteeWallet).to.deep.eq(vesteeWalletNew);
 
+      // Check that the remaining values don't change from default values
+      expect(vestingInfoAfter.totalVestingAmount.amount.toNumber()).to.eq(10_000);
+      expect(vestingInfoAfter.startTs.time.toNumber()).to.eq(1577836801);
+      expect(vestingInfoAfter.cliffEndTs.time.toNumber()).to.eq(1609459201);
+      expect(vestingInfoAfter.endTs.time.toNumber()).to.eq(1609459201);
+      expect(vestingInfoAfter.periodCount.toNumber()).to.eq(36);
+
+      expect(vestingInfoAfter.admin).to.deep.eq(adminKeypair.publicKey);
+      expect(vestingInfoAfter.mint).to.deep.eq(vestingMint);
+      expect(vestingInfoAfter.vault).to.deep.eq(await vesting.vestingVault());
+      expect(vestingInfoAfter.cumulativeVestedAmount.amount.toNumber()).to.eq(0);
+      expect(vestingInfoAfter.cumulativeWithdrawnAmount.amount.toNumber()).to.eq(0);
+      expect(vestingInfoAfter.vestingVaultBalance.amount.toNumber()).to.eq(0);
+      expect(vestingInfoAfter.unfundedLiabilities.amount.toNumber()).to.eq(0);
+
+      
     });
   });
 }
