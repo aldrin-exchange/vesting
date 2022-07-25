@@ -64,7 +64,8 @@ pub fn handle(
 
     let accs = ctx.accounts;
 
-    accs.vesting.beneficiary = accs.vestee_wallet.key();
+    accs.vesting.admin = accs.admin.key();
+    accs.vesting.vestee_wallet = accs.vestee_wallet.key();
     accs.vesting.mint = accs.mint.key();
     accs.vesting.vault = accs.vesting_vault.key();
 

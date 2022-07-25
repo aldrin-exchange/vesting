@@ -4,8 +4,10 @@ use std::mem;
 #[derive(Default, Debug)]
 #[account]
 pub struct Vesting {
+    /// The authority of this Vesting account.
+    pub admin: Pubkey,
     /// The vestee of this Vesting account.
-    pub beneficiary: Pubkey,
+    pub vestee_wallet: Pubkey,
     /// The mint of the SPL token locked up.
     pub mint: Pubkey,
     /// Address of the account's token vault.
@@ -38,7 +40,8 @@ impl Vesting {
 
     pub fn space() -> usize {
         let discriminant = 8;
-        let beneficiary = 32;
+        let admin = 32;
+        let vestee_wallet = 32;
         let mint = 32;
         let vault = 32;
 
@@ -54,7 +57,8 @@ impl Vesting {
         let period_count = mem::size_of::<i32>();
 
         discriminant
-            + beneficiary
+            + admin
+            + vestee_wallet
             + mint
             + vault
             + mint

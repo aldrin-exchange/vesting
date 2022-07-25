@@ -60,7 +60,7 @@ export function test() {
           }
       ));
 
-      expect(logs).to.contain("Vestee wallet must of correct mint");
+      expect(logs).to.contain("Vestee wallet must be of correct mint");
     });
   
     it("fails if vesting account already exists", async () => {
@@ -102,8 +102,10 @@ export function test() {
     });
 
     it("works", async () => {
+      const adminKeypair = Keypair.generate();
       const vesting = await Vesting.init(
           {
+            adminKeypair,
             vesteeWallet,
             mint: vestingMint,
           }
@@ -118,7 +120,8 @@ export function test() {
       expect(vestingInfo.endTs.time.toNumber()).to.eq(1609459201);
       expect(vestingInfo.periodCount.toNumber()).to.eq(36);
 
-      expect(vestingInfo.beneficiary).to.deep.eq(vesteeWallet);
+      expect(vestingInfo.admin).to.deep.eq(adminKeypair.publicKey);
+      expect(vestingInfo.vesteeWallet).to.deep.eq(vesteeWallet);
       expect(vestingInfo.mint).to.deep.eq(vestingMint);
       expect(vestingInfo.vault).to.deep.eq(await vesting.vestingVault());
       expect(vestingInfo.cumulativeVestedAmount.amount.toNumber()).to.eq(0);
