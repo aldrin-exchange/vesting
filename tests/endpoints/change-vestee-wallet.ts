@@ -69,7 +69,7 @@ export function test() {
         null,
         9
       );
-      const vesteeWalletNew = await createAccount(
+      vesteeWalletNew = await createAccount(
         provider.connection,
         payer,
         fakeMint,
@@ -80,7 +80,7 @@ export function test() {
       const logs = await errLogs(
         vesting.changeVesteeWallet({
           adminKeypair,
-          vesteeWalletNew: vesteeWalletNew,
+          vesteeWalletNew,
         })
       );
 
@@ -92,7 +92,7 @@ export function test() {
     it("fails if admin isn't signer", async () => {
       const logs = await getErr(
         vesting.changeVesteeWallet({
-          vesteeWalletNew: vesteeWalletNew,
+          vesteeWalletNew,
           skipAdminSignature: true,
         })
       );
@@ -105,7 +105,7 @@ export function test() {
 
       const logs = await getErr(
         vesting.changeVesteeWallet({
-          vesteeWalletNew: vesteeWalletNew,
+          vesteeWalletNew,
           adminKeypair: fakeAdmin,
         })
       );
