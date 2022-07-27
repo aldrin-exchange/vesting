@@ -8,7 +8,6 @@ export function test() {
   describe("update_vested_tokens", () => {
     const adminKeypair = Keypair.generate();
     let vesteeWallet: PublicKey;
-    let vesteeWalletNew: PublicKey;
     let vestingMint: PublicKey;
     let vesting: Vesting;
 
