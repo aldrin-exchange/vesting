@@ -157,7 +157,7 @@ pub fn compute_periods_from_cliff_to_current_dt(
     cliff_dt: DateTime<Utc>,
     current_dt: DateTime<Utc>,
 ) -> u32 {
-    if cliff_dt.month() < current_dt.month() + 1 {
+    if current_dt.month() < current_dt.month() {
         return 0;
     }
 
@@ -168,7 +168,6 @@ pub fn compute_periods_from_cliff_to_current_dt(
         } else {
             0
         };
-
     delta_periods
 }
 
@@ -190,4 +189,132 @@ pub fn compute_periods_from_boy_to_current_dt(
 
 pub fn compute_periods_in_full_years(delta_years: u32) -> u32 {
     (delta_years - 1) * 12
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_does_not_update_vested_tokens_if_before_cliff_date() -> Result<()> {
+        let clock = TimeStamp::new_dt(Utc.ymd(2021, 6, 14));
+
+        let mut vesting = Vesting {
+            total_vesting_amount: TokenAmount::new(10_000),
+            cumulative_vested_amount: TokenAmount::new(0),
+            start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
+            total_periods: 48,
+            cliff_periods: 12,
+            ..Default::default()
+        };
+
+        vesting.update_vested_tokens(clock.time)?;
+
+        // Check that nothing has changed
+        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(0));
+        assert_eq!(vesting.total_vesting_amount, TokenAmount::new(10_000));
+        assert_eq!(vesting.cliff_periods, 12);
+        assert_eq!(vesting.total_periods, 48);
+        assert_eq!(vesting.start_ts, TimeStamp::new_dt(Utc.ymd(2020, 6, 15)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn it_updates_vested_tokens_if_is_cliff_date() -> Result<()> {
+        let clock = TimeStamp::new_dt(Utc.ymd(2021, 6, 15));
+
+        let mut vesting = Vesting {
+            total_vesting_amount: TokenAmount::new(10_000),
+            cumulative_vested_amount: TokenAmount::new(0),
+            start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
+            total_periods: 48,
+            cliff_periods: 12,
+            ..Default::default()
+        };
+
+        vesting.update_vested_tokens(clock.time)?;
+
+        // Check that cumulative vested amount is correct
+        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(2_500));
+
+        // Check that nothing else has changed
+        assert_eq!(vesting.total_vesting_amount, TokenAmount::new(10_000));
+        assert_eq!(vesting.cliff_periods, 12);
+        assert_eq!(vesting.total_periods, 48);
+        assert_eq!(vesting.start_ts, TimeStamp::new_dt(Utc.ymd(2020, 6, 15)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn it_updates_vested_tokens_if_after_cliff_date() -> Result<()> {
+        let clock = TimeStamp::new_dt(Utc.ymd(2022, 6, 15));
+
+        let mut vesting = Vesting {
+            total_vesting_amount: TokenAmount::new(10_000),
+            cumulative_vested_amount: TokenAmount::new(0),
+            start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
+            total_periods: 48,
+            cliff_periods: 12,
+            ..Default::default()
+        };
+
+        vesting.update_vested_tokens(clock.time)?;
+
+        // Check that cumulative vested amount is correct
+        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(5_000));
+
+        // Check that nothing else has changed
+        assert_eq!(vesting.total_vesting_amount, TokenAmount::new(10_000));
+        assert_eq!(vesting.cliff_periods, 12);
+        assert_eq!(vesting.total_periods, 48);
+        assert_eq!(vesting.start_ts, TimeStamp::new_dt(Utc.ymd(2020, 6, 15)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn it_updates_vested_tokens() -> Result<()> {
+        let mut vesting = Vesting {
+            total_vesting_amount: TokenAmount::new(10_000),
+            cumulative_vested_amount: TokenAmount::new(0),
+            start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
+            total_periods: 48,
+            cliff_periods: 12,
+            ..Default::default()
+        };
+
+        let mut clock;
+        let mut current_month = 7;
+        let mut current_year = 2020;
+        for i in 1..=48 {
+            clock = TimeStamp::new_dt(Utc.ymd(current_year, current_month, 20));
+            vesting.update_vested_tokens(clock.time)?;
+
+            // Check that cumulative vested amount is correct
+            let vested_tokens = if i <= 11 { 0 } else { i * 10_000 / 48 };
+
+            assert_eq!(
+                vesting.cumulative_vested_amount,
+                TokenAmount::new(vested_tokens)
+            );
+
+            // Increment month and year datetime
+            current_year = if current_month == 12 {
+                current_year + 1
+            } else {
+                current_year
+            };
+            current_month = if current_month < 12 {
+                current_month + 1
+            } else {
+                1
+            };
+        }
+
+        Ok(())
+    }
+
+    // TODO: what iff clock is in the past?
 }
