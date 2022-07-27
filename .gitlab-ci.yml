@@ -71,7 +71,6 @@ program:
     # generates docs.rs style page
     - cargo doc --lib --no-deps --document-private-items
     - cp -r target/doc public
-    - cp -r docs public/docs
 
     # generate code coverage report
     - ./bin/codecov.sh
