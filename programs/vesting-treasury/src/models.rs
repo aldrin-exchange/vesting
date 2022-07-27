@@ -44,6 +44,17 @@ impl TokenAmount {
     }
 }
 
+impl TimeStamp {
+    pub fn new(time: i64) -> Self {
+        Self { time }
+    }
+    pub fn new_dt(date: Date<Utc>) -> Self {
+        let time = date.and_hms_nano(0, 0, 0, 0).timestamp();
+
+        Self { time }
+    }
+}
+
 impl Slot {
     pub fn new(slot: u64) -> Self {
         Self { slot }
