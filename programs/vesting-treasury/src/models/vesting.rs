@@ -275,6 +275,29 @@ mod tests {
     }
 
     #[test]
+    fn it_stops_updating_vested_tokens_if_after_fully_vested() -> Result<()> {
+        let clock = TimeStamp::new_dt(Utc.ymd(2024, 6, 15));
+
+        let mut vesting = Vesting {
+            total_vesting_amount: TokenAmount::new(10_000),
+            cumulative_vested_amount: TokenAmount::new(0),
+            start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
+            total_periods: 48,
+            cliff_periods: 12,
+            ..Default::default()
+        };
+
+        vesting.update_vested_tokens(clock.time)?;
+        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(10_000));
+
+        let clock = TimeStamp::new_dt(Utc.ymd(2030, 6, 15));
+        vesting.update_vested_tokens(clock.time)?;
+        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(10_000));
+
+        Ok(())
+    }
+
+    #[test]
     fn it_updates_vested_tokens() -> Result<()> {
         let mut vesting = Vesting {
             total_vesting_amount: TokenAmount::new(10_000),
