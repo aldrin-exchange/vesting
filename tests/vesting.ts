@@ -1,5 +1,5 @@
 import { vesting, payer, provider, airdrop } from "./helpers";
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
 import {
   createAccount,
   createMint,
@@ -34,8 +34,11 @@ export interface ChangeVesteeWalletArgs {
   vestingKeypair: Keypair;
   vesteeWalletNew: PublicKey;
   skipAdminSignature: boolean;
-  // skipKeypairSignature: boolean;
   skipCreateVesting: boolean;
+}
+
+export interface UpdateVestedTokensArgs {
+  vestingKeypair: Keypair;
 }
 
 export class Vesting {
@@ -204,7 +207,6 @@ export class Vesting {
 
     const vestingKeypair = input.vestingKeypair ?? this.keypair;
     const skipAdminSignature = input.skipAdminSignature ?? false;
-    // const skipKeypairSignature = input.skipKeypairSignature ?? false;
     const skipCreateVesting = input.skipCreateVesting ?? false;
 
     const vesteeWalletNew = input.vesteeWalletNew ?? 
@@ -219,20 +221,10 @@ export class Vesting {
     })());
 
     const preInstructions = [];
-    // if (!skipCreateVesting) {
-    //   preInstructions.push(
-    //     await vesting.account.vesting.createInstruction(vestingKeypair)
-    //   );
-    // }
-
     const signers = [];
     if (!skipAdminSignature) {
       signers.push(adminKeypair);
     }
-
-    // if (!skipKeypairSignature) {
-    //   signers.push(vestingKeypair);
-    // }
 
     await vesting.methods
       .changeVesteeWallet()
@@ -240,6 +232,25 @@ export class Vesting {
         admin: adminKeypair.publicKey,
         vesting: vestingKeypair.publicKey,
         vesteeWalletNew,
+      })
+      .signers(signers)
+      .preInstructions(preInstructions)
+      .rpc();
+  }
+
+  public async updateVestedTokens(
+    input: Partial<UpdateVestedTokensArgs> = {},
+    ) {
+    const vestingKeypair = input.vestingKeypair ?? this.keypair;
+
+    const preInstructions = [];
+    const signers = [];
+
+    await vesting.methods
+      .updatedVestedTokens()
+      .accounts({
+        vesting: vestingKeypair.publicKey,
+        clock: SYSVAR_CLOCK_PUBKEY,
       })
       .signers(signers)
       .preInstructions(preInstructions)
