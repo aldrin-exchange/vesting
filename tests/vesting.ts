@@ -60,8 +60,8 @@ export class Vesting {
         return pda;
       })());
 
-    const mint = 
-      input.mint ?? 
+    const mint =
+      input.mint ??
       (await (async () => {
       return createMint(
         provider.connection,
@@ -81,8 +81,8 @@ export class Vesting {
         );
         return pda;
     })());
-      
-    const vesteeWallet = input.vesteeWallet ?? 
+
+    const vesteeWallet = input.vesteeWallet ??
       (await (async () => {
         const wallet = await createAccount(
           provider.connection,
