@@ -2,6 +2,7 @@ pub mod endpoints;
 pub mod err;
 pub mod models;
 pub mod prelude;
+pub mod time;
 
 use crate::endpoints::*;
 use crate::prelude::*;
@@ -32,5 +33,9 @@ pub mod vesting_treasury {
 
     pub fn change_vestee_wallet(ctx: Context<ChangeVesteeWallet>) -> Result<()> {
         endpoints::change_vestee_wallet::handle(ctx)
+    }
+
+    pub fn updated_vested_tokens(ctx: Context<UpdateVestedTokens>) -> Result<()> {
+        endpoints::update_vested_tokens::handle(ctx)
     }
 }
