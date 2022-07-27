@@ -207,7 +207,7 @@ export class Vesting {
     // const skipKeypairSignature = input.skipKeypairSignature ?? false;
     const skipCreateVesting = input.skipCreateVesting ?? false;
 
-    const vesteeWalletNew = input.vesteeWalletNew ?? 
+    const vesteeWalletNew = input.vesteeWalletNew ??
       (await (async () => {
         const wallet = await createAccount(
           provider.connection,
