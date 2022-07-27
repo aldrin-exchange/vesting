@@ -35,7 +35,7 @@ pub mod vesting_treasury {
         endpoints::change_vestee_wallet::handle(ctx)
     }
 
-    pub fn updated_vested_tokens(ctx: Context<UpdateVestedTokens>) -> Result<()> {
+    pub fn update_vested_tokens(ctx: Context<UpdateVestedTokens>) -> Result<()> {
         endpoints::update_vested_tokens::handle(ctx)
     }
 }

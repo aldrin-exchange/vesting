@@ -247,7 +247,7 @@ export class Vesting {
     const signers = [];
 
     await vesting.methods
-      .updatedVestedTokens()
+      .updateVestedTokens()
       .accounts({
         vesting: vestingKeypair.publicKey,
         clock: SYSVAR_CLOCK_PUBKEY,
