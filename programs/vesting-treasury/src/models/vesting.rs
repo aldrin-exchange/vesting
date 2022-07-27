@@ -257,6 +257,27 @@ mod tests {
     }
 
     #[test]
+    fn it_updates_vested_tokens_when_no_cliff() -> Result<()> {
+        let clock = TimeStamp::new_dt(Utc.ymd(2020, 7, 15));
+
+        let mut vesting = Vesting {
+            total_vesting_amount: TokenAmount::new(10_000),
+            cumulative_vested_amount: TokenAmount::new(0),
+            start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
+            total_periods: 48,
+            cliff_periods: 0,
+            ..Default::default()
+        };
+
+        vesting.update_vested_tokens(clock.time)?;
+
+        // Check that cumulative vested amount is correct
+        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(208));
+
+        Ok(())
+    }
+
+    #[test]
     fn it_updates_vested_tokens_if_after_cliff_date() -> Result<()> {
         let clock = TimeStamp::new_dt(Utc.ymd(2022, 6, 15));
 
@@ -344,7 +365,30 @@ mod tests {
                 1
             };
         }
+        Ok(())
+    }
 
+    #[test]
+    fn it_updates_vested_tokens_when_vesting_day_is_eom() -> Result<()> {
+        let clock = TimeStamp::new_dt(Utc.ymd(2022, 2, 28));
+
+        let mut vesting = Vesting {
+            total_vesting_amount: TokenAmount::new(10_000),
+            cumulative_vested_amount: TokenAmount::new(0),
+            start_ts: TimeStamp::new_dt(Utc.ymd(2022, 1, 31)),
+            total_periods: 48,
+            cliff_periods: 0,
+            ..Default::default()
+        };
+
+        vesting.update_vested_tokens(clock.time)?;
+
+        // Check that cumulative vested amount is correct
+        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(0));
+
+        let clock = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
+        vesting.update_vested_tokens(clock.time)?;
+        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(208));
         Ok(())
     }
 }

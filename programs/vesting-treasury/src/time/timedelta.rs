@@ -66,14 +66,6 @@ pub fn shift_years<D: Datelike>(date: D, years: i32) -> D {
 /// Shift the date to have the given day.  Returns None if the day is not in the range 1-31.
 ///
 /// Ambiguous month-ends are shifted backwards as necessary.
-/// For example:
-/// ```rust
-/// # use chrono::NaiveDate;
-/// # use chronoutil::with_day;
-/// let start = NaiveDate::from_ymd(2020, 2, 1);
-/// assert_eq!(with_day(start, 31), Some(NaiveDate::from_ymd(2020, 2, 29)));
-/// assert_eq!(with_day(start, 42), None);
-/// ```
 pub fn with_day<D: Datelike>(date: D, day: u32) -> Option<D> {
     if day == 0 || day > 31 {
         None
@@ -85,14 +77,6 @@ pub fn with_day<D: Datelike>(date: D, day: u32) -> Option<D> {
 /// Shift the date to have the given month. Returns None if the month is out of range.
 ///
 /// Ambiguous month-ends are shifted backwards as necessary.
-/// For example:
-/// ```rust
-/// # use chrono::NaiveDate;
-/// # use chronoutil::with_month;
-/// let start = NaiveDate::from_ymd(2020, 1, 31);
-/// assert_eq!(with_month(start, 2), Some(NaiveDate::from_ymd(2020, 2, 29)));
-/// assert_eq!(with_month(start, 13), None);
-/// ```
 pub fn with_month<D: Datelike>(date: D, month: u32) -> Option<D> {
     if month == 0 || month > 12 {
         None
@@ -105,13 +89,6 @@ pub fn with_month<D: Datelike>(date: D, month: u32) -> Option<D> {
 /// Shift the date to have the given year.
 ///
 /// Ambiguous month-ends are shifted backwards as necessary.
-/// For example:
-/// ```rust
-/// # use chrono::NaiveDate;
-/// # use chronoutil::with_year;
-/// let start = NaiveDate::from_ymd(2020, 2, 29);
-/// assert_eq!(with_year(start, 2021), NaiveDate::from_ymd(2021, 2, 28));
-/// ```
 pub fn with_year<D: Datelike>(date: D, year: i32) -> D {
     let delta = year - date.year();
     shift_years(date, delta)
