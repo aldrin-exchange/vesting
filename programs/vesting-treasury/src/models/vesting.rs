@@ -73,6 +73,58 @@ impl Vesting {
             + cliff_periods
             + period_type
     }
+
+    pub fn update_vested_tokens(&mut self, clock_ts: i64) -> Result<()> {
+        // 1. Convert clock to datetime
+        let current_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(clock_ts, 0), Utc);
+
+        // 2. Convert start_at to datetime
+        let start_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(self.start_ts.time, 0), Utc);
+
+        // 3. Add cliff periods to start_at to get cliff_date
+        let cliff_dt = shift_months(start_dt, self.cliff_periods as i32);
+
+        if current_dt < cliff_dt {
+            // We are still in the cliff period and therefore we
+            // do not have to update the vested tokens because there are none
+            return Ok(());
+        }
+
+        // 4. Compute difference Δyear = year(clock) - year(cliff)
+        let delta_years = (current_dt.year() - cliff_dt.year()) as u32;
+
+        // 5. Match Δyear:
+        let delta_periods = match delta_years {
+            // Δyear == 0 => compute_periods_from_cliff
+            0 => compute_periods_from_cliff_to_current_dt(cliff_dt, current_dt),
+            // Δyear == 1 => compute_periods_until_eoy + compute_periods_from_boy
+            1 => {
+                compute_periods_from_cliff_to_eoy(cliff_dt)
+                    + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
+            }
+            // year > 2 => compute_periods_until_eoy
+            // + compute_periods_in_full_years + compute_periods_from_boy
+            _ => {
+                compute_periods_from_cliff_to_eoy(cliff_dt)
+                    + compute_periods_in_full_years(delta_years)
+                    + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
+            }
+        };
+
+        // 6. Compute cumulative_vested = (cliff_periods + Δperiods)
+        //                                   * total_amount / total_periods
+        let cumulative_vested = Decimal::from(self.cliff_periods)
+            .try_add(Decimal::from(delta_periods as u64))?
+            .try_div(Decimal::from(self.total_periods))?
+            .try_mul(Decimal::from(self.total_vesting_amount))?
+            .try_floor()?;
+
+        self.cumulative_vested_amount = TokenAmount::new(cumulative_vested);
+
+        Ok(())
+    }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Copy, Clone, Debug, Eq, PartialEq)]
@@ -99,4 +151,43 @@ impl PeriodType {
             _ => Err(error!(err::arg("The period type enumeration is invalid"))),
         }
     }
+}
+
+pub fn compute_periods_from_cliff_to_current_dt(
+    cliff_dt: DateTime<Utc>,
+    current_dt: DateTime<Utc>,
+) -> u32 {
+    if cliff_dt.month() < current_dt.month() + 1 {
+        return 0;
+    }
+
+    let delta_periods = current_dt.month()
+        - cliff_dt.month()
+        - if current_dt.day() < cliff_dt.day() {
+            1
+        } else {
+            0
+        };
+
+    delta_periods
+}
+
+pub fn compute_periods_from_cliff_to_eoy(cliff_dt: DateTime<Utc>) -> u32 {
+    12 - cliff_dt.month()
+}
+
+pub fn compute_periods_from_boy_to_current_dt(
+    cliff_dt: DateTime<Utc>,
+    current_dt: DateTime<Utc>,
+) -> u32 {
+    current_dt.month()
+        - if current_dt.day() >= cliff_dt.day() {
+            0
+        } else {
+            1
+        }
+}
+
+pub fn compute_periods_in_full_years(delta_years: u32) -> u32 {
+    (delta_years - 1) * 12
 }
