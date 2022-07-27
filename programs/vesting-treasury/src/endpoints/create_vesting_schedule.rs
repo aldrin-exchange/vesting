@@ -9,16 +9,15 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount};
 pub struct CreateVestingSchedule<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
-    /// CHECK:
     #[account(zero)]
     pub vesting: Account<'info, Vesting>,
-    /// CHECK:
+    /// CHECK: UNSAFE_CODES.md#signer
     #[account(
         seeds = [Vesting::SIGNER_PDA_PREFIX, vesting.key().as_ref()],
         bump
     )]
     pub vesting_signer: AccountInfo<'info>,
-    /// CHECK:
+    /// CHECK: UNSAFE_CODES.md#token
     #[account(
         init,
         payer = admin,
@@ -48,6 +47,13 @@ pub fn handle(
     total_periods: u64,
     period_type: u32,
 ) -> Result<()> {
+    if period_type != 1 {
+        return Err(error!(err::arg(
+            "The current contract version only supports\
+             vesting schedules with monthly periods."
+        )));
+    }
+
     if cliff_periods > total_periods {
         return Err(error!(err::arg(
             "The number of cliff periods cannot be higher than total number of periods"
