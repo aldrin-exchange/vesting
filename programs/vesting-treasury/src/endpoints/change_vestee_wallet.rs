@@ -9,7 +9,6 @@ use anchor_spl::token::TokenAccount;
 #[derive(Accounts)]
 pub struct ChangeVesteeWallet<'info> {
     pub admin: Signer<'info>,
-    /// CHECK:
     #[account(mut)]
     pub vesting: Account<'info, Vesting>,
     pub vestee_wallet_new: Account<'info, TokenAccount>,
