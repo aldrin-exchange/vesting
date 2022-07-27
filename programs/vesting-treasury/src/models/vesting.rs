@@ -86,9 +86,18 @@ impl Vesting {
         // 3. Add cliff periods to start_at to get cliff_date
         let cliff_dt = shift_months(start_dt, self.cliff_periods as i32);
 
+        //
+        let end_dt = shift_months(start_dt, self.total_periods as i32);
+
         if current_dt < cliff_dt {
             // We are still in the cliff period and therefore we
             // do not have to update the vested tokens because there are none
+            return Ok(());
+        }
+
+        if current_dt >= end_dt {
+            // This means the schedule is fully vested
+            self.cumulative_vested_amount = self.total_vesting_amount;
             return Ok(());
         }
 
@@ -338,6 +347,4 @@ mod tests {
 
         Ok(())
     }
-
-    // TODO: what iff clock is in the past?
 }
