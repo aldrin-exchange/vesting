@@ -1,4 +1,8 @@
 //! Calculates and updates the amount of tokens vested in the vesting schedule.
+//! The endpoint uses the solana clock account to access the runtime clock and
+//! compare it against the vesting dates to calculate how many periods have
+//! vested. Based on the amount of vested periods the endpoint then computes
+//! the pro-rata amount of tokens that are vested.
 
 use crate::prelude::*;
 

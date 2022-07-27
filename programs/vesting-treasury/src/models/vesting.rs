@@ -74,19 +74,33 @@ impl Vesting {
             + period_type
     }
 
+    /// Updates the field `cumulative_vested_amount` in `Vesting`struct based
+    /// on the amount of days that have passed. The method receives the
+    /// argument `clock_ts`, which stands for clock timestamp. In the endpoint
+    /// `updated_vested_tokens` we call this method with `clock_ts` being the
+    /// the current timestamp given by the runtime.
+    ///
+    /// Vesting schedules have a cliff period following by a period where the
+    /// schedule vests periodically, usually monthly. The periodicity is given
+    /// by the `self.period_type`. As of this contract version only the
+    /// type `Monthly` is accepted by the endpoint that calls this method.
+    ///
+    /// If we find ourselves before the end of the cliff period, the amount of
+    /// tokens vested is nill, therefore we perform an early return and do not
+    /// update state. If we find ourselves after the end of the full vesting
+    /// period then all the tokens will be vested and the state updated
+    /// accordingly.
     pub fn update_vested_tokens(&mut self, clock_ts: i64) -> Result<()> {
-        // 1. Convert clock to datetime
+        // Converting timestamps to datetimes
         let current_dt: DateTime<Utc> =
             DateTime::from_utc(NaiveDateTime::from_timestamp(clock_ts, 0), Utc);
 
-        // 2. Convert start_at to datetime
         let start_dt: DateTime<Utc> =
             DateTime::from_utc(NaiveDateTime::from_timestamp(self.start_ts.time, 0), Utc);
 
-        // 3. Add cliff periods to start_at to get cliff_date
+        // cliff_dt marks the end of the cliff period
+        // end_dt marks the end of the full vesting period
         let cliff_dt = shift_months(start_dt, self.cliff_periods as i32);
-
-        //
         let end_dt = shift_months(start_dt, self.total_periods as i32);
 
         if current_dt < cliff_dt {
@@ -101,23 +115,35 @@ impl Vesting {
             return Ok(());
         }
 
-        // 4. Compute difference Δyear = year(clock) - year(cliff)
         let delta_years = (current_dt.year() - cliff_dt.year()) as u32;
 
-        // 5. Match Δyear:
+        // We want to compute the amount of periods between two dates.
+        // Depending on the difference in years between the two dates we will
+        // have to perform different steps, described below
         let delta_periods = match delta_years {
-            // Δyear == 0 => compute_periods_from_cliff
+            // This means that both dates are in the same year
+            // e.g. 15/03/2020 & 20/09/2020
             0 => compute_periods_from_cliff_to_current_dt(cliff_dt, current_dt),
-            // Δyear == 1 => compute_periods_until_eoy + compute_periods_from_boy
+            // This means that both dates are one year apart
+            // e.g. 15/03/2020 & 20/09/2021
+            // We therefore perform two distinct operations, for the first year
+            // and the second one
             1 => {
+                // Periods from 15/03/2020 to 31/12/2020
                 compute_periods_from_cliff_to_eoy(cliff_dt)
+                    // Periods from 01/01/2021 to 20/09/2021
                     + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
             }
-            // year > 2 => compute_periods_until_eoy
-            // + compute_periods_in_full_years + compute_periods_from_boy
+            // This means that both dates are at least two years apart
+            // e.g. 15/03/2020 & 20/09/2024
+            // We therefore perform two distinct operations, for the first year,
+            // for the years in the middle and the last year
             _ => {
+                // Periods from 15/03/2020 to 31/12/2020
                 compute_periods_from_cliff_to_eoy(cliff_dt)
+                    // Periods from 01/01/2020 to 31/12/2023
                     + compute_periods_in_full_years(delta_years)
+                    // Periods from 01/01/2024 to 20/09/2024
                     + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
             }
         };
@@ -162,11 +188,21 @@ impl PeriodType {
     }
 }
 
+/// Computes the amount of periods in between two dates in the same year.
+/// As an example:
+/// cliff_dt = 15/03/2020
+/// current_dt = 20/09/2020
+///
+/// First we confirm that current_dt is not before the cliff_dt, otherwise
+/// we return zero periods. Otherwise, we subtract the amount of months between
+/// each date and add 1 period in the curren_dt day is equal or after the
+/// cliff_dt day. In our example the curent day is 20 which is superior or
+/// equal to 15. We therefore count that month as a period, hence why we add 1.
 pub fn compute_periods_from_cliff_to_current_dt(
     cliff_dt: DateTime<Utc>,
     current_dt: DateTime<Utc>,
 ) -> u32 {
-    if current_dt.month() < current_dt.month() {
+    if current_dt.month() < cliff_dt.month() {
         return 0;
     }
 
@@ -180,10 +216,25 @@ pub fn compute_periods_from_cliff_to_current_dt(
     delta_periods
 }
 
+/// Computes the amount of periods the cliff_dt datetime till the end of the
+/// year (eoy). Since the cliff_dt datetime day is guaranteed to match the day in
+/// which the vesting schedule started, we know that we can easily subtract the
+/// total number of periods in a year (if monthly this means 12) by the period
+/// refering the to the cliff_dt (i.e. month)
 pub fn compute_periods_from_cliff_to_eoy(cliff_dt: DateTime<Utc>) -> u32 {
     12 - cliff_dt.month()
 }
 
+/// Computes the amount of periods from the beginning of the current year (boy)
+/// to the current_dt datetime.
+///
+/// When PeriodType is Monthly the number or periods will be the current_dt
+/// month minus 1 in case the current day is inferior to the cliff_dt day.
+/// Since the cliff_dt datetime day is guaranteed to match the day in
+/// which the vesting schedule started, we we look at the cliff_dt day and
+/// compare it to the current day to infer if we should count or not with the
+/// current period, hence the substrating by 1 means that we are taking our the
+/// current period because this one has not finished.
 pub fn compute_periods_from_boy_to_current_dt(
     cliff_dt: DateTime<Utc>,
     current_dt: DateTime<Utc>,
@@ -196,6 +247,9 @@ pub fn compute_periods_from_boy_to_current_dt(
         }
 }
 
+/// Computes the amount of periods in a set of full years, represented by
+/// `delta_years` - 1. In the case the PeriodType is Monthly, we simply
+/// multiply the number of years by 12
 pub fn compute_periods_in_full_years(delta_years: u32) -> u32 {
     (delta_years - 1) * 12
 }
