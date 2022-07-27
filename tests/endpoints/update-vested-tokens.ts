@@ -105,11 +105,16 @@ export function test() {
     });
 
     it.only("works", async () => {
-      const logs = await errLogs( vesting.updateVestedTokens());
+      const logs = await errLogs(vesting.updateVestedTokens());
       console.log(logs)
+      // const vestingInfoBefore = await vesting.fetch();
 
+      // await vesting.updateVestedTokens();
 
-    //   const vestingInfoBefore = await vesting.fetch();
+      // const vestingInfoAfter = await vesting.fetch();
+    
+      // console.log("Vesting Info Before: ", vestingInfoBefore.cumulativeVestedAmount);
+      // console.log("Vesting Info After: ", vestingInfoAfter.cumulativeVestedAmount);
 
     //   await vesting.changeVesteeWallet({
     //     adminKeypair,
