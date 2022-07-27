@@ -48,6 +48,13 @@ pub fn handle(
     total_periods: u64,
     period_type: u32,
 ) -> Result<()> {
+    if period_type != 1 {
+        return Err(error!(err::arg(
+            "The current contract version only supports\
+             vesting schedules with monthly periods."
+        )));
+    }
+
     if cliff_periods > total_periods {
         return Err(error!(err::arg(
             "The number of cliff periods cannot be higher than total number of periods"
