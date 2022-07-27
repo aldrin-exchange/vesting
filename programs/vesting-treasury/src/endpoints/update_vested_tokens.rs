@@ -1,4 +1,4 @@
-//! Calculates and updated the amount of tokens vested in the vesting schedule.
+//! Calculates and updates the amount of tokens vested in the vesting schedule.
 
 use crate::prelude::*;
 
@@ -14,9 +14,12 @@ pub fn handle(ctx: Context<UpdateVestedTokens>) -> Result<()> {
 
     let clock_ts = accs.clock.unix_timestamp;
 
-    // TODO: If cumulative vested is already equal to total amount the Err
-    // TODO: Make sure only Monthly enum works
-    // TODO: Make sure no vested tokens never surpasses total amount, ( especially after current date is far into the future)
+    if accs.vesting.period_type != PeriodType::Monthly {
+        return Err(error!(err::arg(
+            "The current contract version only supports\
+             vesting schedules with monthly periods."
+        )));
+    }
 
     accs.vesting.update_vested_tokens(clock_ts)?;
     Ok(())
