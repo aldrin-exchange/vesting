@@ -16,7 +16,6 @@ pub struct FundVestingVault<'info> {
         @ err::acc("Vault input does not match the vault in the vesting account")
     )]
     pub vesting_vault: Account<'info, TokenAccount>,
-    // pub mint: Account<'info, Mint>,
     #[account(
         mut,
         constraint = funding_wallet.mint == vesting.mint.key()
