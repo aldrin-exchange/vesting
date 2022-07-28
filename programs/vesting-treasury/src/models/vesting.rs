@@ -148,8 +148,7 @@ impl Vesting {
             }
         };
 
-        // 6. Compute cumulative_vested = (cliff_periods + Δperiods)
-        //                                   * total_amount / total_periods
+        // (cliff_periods + Δperiods) * total_amount / total_periods
         let cumulative_vested = Decimal::from(self.cliff_periods)
             .try_add(Decimal::from(delta_periods as u64))?
             .try_div(Decimal::from(self.total_periods))?
@@ -157,6 +156,23 @@ impl Vesting {
             .try_floor()?;
 
         self.cumulative_vested_amount = TokenAmount::new(cumulative_vested);
+
+        Ok(())
+    }
+
+    pub fn update_unfunded_liability(&mut self) -> Result<()> {
+        // Cum withdrawn can never be bigger than cum vested by design
+        let liability = Decimal::from(self.cumulative_vested_amount)
+            .try_sub(Decimal::from(self.cumulative_withdrawn_amount))?
+            .try_round()?;
+
+        if self.vesting_vault_balance.amount >= liability {
+            // Because the whole current liability is funded or overfunded
+            return Ok(());
+        }
+        let unfunded_liability = liability - self.vesting_vault_balance.amount;
+
+        self.unfunded_liabilities = TokenAmount::new(unfunded_liability);
 
         Ok(())
     }
