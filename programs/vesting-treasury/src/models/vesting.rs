@@ -14,14 +14,14 @@ pub struct Vesting {
     pub vault: Pubkey,
     /// The total amount that will vest over time
     pub total_vesting_amount: TokenAmount,
-    /// Amount that is vested thus far
+    /// Cumulative amount that vested thus far
     pub cumulative_vested_amount: TokenAmount,
-    /// Amount that has been withdrawn thus far
+    /// Cumulative amount withdrawn thus far
     pub cumulative_withdrawn_amount: TokenAmount,
     /// Current amount sitting in the vesting vault
-    pub vesting_vault_balance: TokenAmount,
+    pub vault_balance: TokenAmount,
     /// Current amount of vested tokens that is unfunded
-    pub unfunded_liabilities: TokenAmount,
+    pub unfunded_liability: TokenAmount,
     /// The start time in Unix Timestamp of the vesting period
     pub start_ts: TimeStamp,
     /// The amount of periods in total in the vesting schedule
