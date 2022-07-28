@@ -38,4 +38,11 @@ pub mod vesting_treasury {
     pub fn update_vested_tokens(ctx: Context<UpdateVestedTokens>) -> Result<()> {
         endpoints::update_vested_tokens::handle(ctx)
     }
+
+    pub fn fund_vesting_vault(
+        ctx: Context<FundVestingVault>,
+        funding_amount: TokenAmount,
+    ) -> Result<()> {
+        endpoints::fund_vesting_vault::handle(ctx, funding_amount)
+    }
 }
