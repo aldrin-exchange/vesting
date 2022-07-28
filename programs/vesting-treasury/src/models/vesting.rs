@@ -206,14 +206,13 @@ pub fn compute_periods_from_cliff_to_current_dt(
         return 0;
     }
 
-    let delta_periods = current_dt.month()
+    current_dt.month()
         - cliff_dt.month()
         - if current_dt.day() < cliff_dt.day() {
             1
         } else {
             0
-        };
-    delta_periods
+        }
 }
 
 /// Computes the amount of periods the cliff_dt datetime till the end of the
