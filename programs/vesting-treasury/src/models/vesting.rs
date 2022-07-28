@@ -189,6 +189,12 @@ impl Vesting {
 
         Ok(())
     }
+
+    pub fn get_current_liability(&mut self) -> Result<u64> {
+        Decimal::from(self.cumulative_vested_amount)
+            .try_sub(Decimal::from(self.cumulative_withdrawn_amount))?
+            .try_round()
+    }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Copy, Clone, Debug, Eq, PartialEq)]

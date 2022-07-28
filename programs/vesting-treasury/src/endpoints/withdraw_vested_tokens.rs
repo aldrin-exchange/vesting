@@ -21,6 +21,7 @@ pub struct WithdrawVestedTokens<'info> {
     )]
     pub vesting_signer: AccountInfo<'info>,
     #[account(
+        mut,
         constraint = vestee_wallet.key() == vesting.vestee_wallet.key()
         @ err::acc("Vestee wallet input does not match the\
          vestee wallet in the vesting account")
@@ -31,16 +32,35 @@ pub struct WithdrawVestedTokens<'info> {
 
 pub fn handle(ctx: Context<WithdrawVestedTokens>, withdraw_amount: TokenAmount) -> Result<()> {
     let accs = ctx.accounts;
+    let signer_bump_seed = *ctx.bumps.get("vesting_signer").unwrap();
+
+    let liability = accs.vesting.get_current_liability()?;
+
+    if withdraw_amount.amount > liability {
+        return Err(error!(err::arg(
+            "The amount of tokens to withdraw is bigger than\
+            the amount of vested tokens to be withdrawn"
+        )));
+    }
 
     if withdraw_amount.amount > accs.vesting.vesting_vault_balance.amount {
         return Err(error!(err::arg(
             "The amount of tokens to withdraw is higher \
-            thatn the amount of tokens currently in vault"
+            than the amount of tokens currently in vault, \
+            it seems the vault is partially unfunded"
         )));
     }
 
+    // make token transfers from vesting token vault to vestee wallet
+    let signer_seeds = &[
+        Vesting::SIGNER_PDA_PREFIX,
+        &accs.vesting.key().to_bytes()[..],
+        &[signer_bump_seed],
+    ];
+
     token::transfer(
-        accs.as_transfer_funds_from_vesting_vault_to_vestee_wallet_context(),
+        accs.as_transfer_funds_from_vesting_vault_to_vestee_wallet_context()
+            .with_signer(&[&signer_seeds[..]]),
         withdraw_amount.amount,
     )?;
 
