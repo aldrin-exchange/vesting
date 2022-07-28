@@ -6,7 +6,8 @@ use std::mem;
 pub struct Vesting {
     /// The authority of this Vesting account.
     pub admin: Pubkey,
-    /// The vestee of this Vesting account.
+    /// The vestee wallet of this Vesting account, that should receive the
+    /// vested funds.
     pub vestee_wallet: Pubkey,
     /// The mint of the SPL token locked up.
     pub mint: Pubkey,
@@ -20,7 +21,10 @@ pub struct Vesting {
     pub cumulative_withdrawn_amount: TokenAmount,
     /// Current amount sitting in the vesting vault
     pub vesting_vault_balance: TokenAmount,
-    /// Current amount of vested tokens that is unfunded
+    ///The unfunded liability is the amount of vested tokens that a user
+    /// is already allowed to withdraw but are still not available in the
+    /// vesting vault, therefore constituting a liability on behalf of
+    /// the funder.
     pub unfunded_liabilities: TokenAmount,
     /// The start time in Unix Timestamp of the vesting period
     pub start_ts: TimeStamp,
@@ -160,6 +164,15 @@ impl Vesting {
         Ok(())
     }
 
+    /// It updates unfunded liability of the vesting account. The unfunded
+    /// is the amount of vested tokens that a user is already allowed to
+    /// withdraw but are still not available in the vesting vault, therefore
+    /// constituting a liability on behalf of the funder.
+    ///
+    /// To calculate the unfunded liabilities we first compute the liability,
+    /// which is simply the difference between what has vested and what has
+    /// been withdrawn. From that liability we then compare it with the vesting
+    /// vault balance to determine if there is any unfunded amount.
     pub fn update_unfunded_liability(&mut self) -> Result<()> {
         // Cum withdrawn can never be bigger than cum vested by design
         let liability = Decimal::from(self.cumulative_vested_amount)
@@ -458,6 +471,55 @@ mod tests {
         let clock = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
         vesting.update_vested_tokens(clock.time)?;
         assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(208));
+        Ok(())
+    }
+
+    #[test]
+    fn it_updates_unfunded_liabilities_when_positive() -> Result<()> {
+        let mut vesting = Vesting {
+            cumulative_vested_amount: TokenAmount::new(5_000),
+            cumulative_withdrawn_amount: TokenAmount::new(2500),
+            vesting_vault_balance: TokenAmount::new(500),
+            ..Default::default()
+        };
+
+        vesting.update_unfunded_liability()?;
+
+        // Unfunded liability = 5_000 - 2_500 - 500
+        assert_eq!(vesting.unfunded_liabilities, TokenAmount::new(2_000));
+
+        Ok(())
+    }
+
+    #[test]
+    fn it_does_not_update_unfunded_liabilities_when_none() -> Result<()> {
+        let mut vesting = Vesting {
+            cumulative_vested_amount: TokenAmount::new(5_000),
+            cumulative_withdrawn_amount: TokenAmount::new(5_000),
+            vesting_vault_balance: TokenAmount::new(0),
+            ..Default::default()
+        };
+
+        vesting.update_unfunded_liability()?;
+
+        assert_eq!(vesting.unfunded_liabilities, TokenAmount::new(0));
+
+        Ok(())
+    }
+
+    #[test]
+    fn it_does_not_update_unfunded_liabilities_when_overfunded() -> Result<()> {
+        let mut vesting = Vesting {
+            cumulative_vested_amount: TokenAmount::new(5_000),
+            cumulative_withdrawn_amount: TokenAmount::new(0),
+            vesting_vault_balance: TokenAmount::new(10_000),
+            ..Default::default()
+        };
+
+        vesting.update_unfunded_liability()?;
+
+        assert_eq!(vesting.unfunded_liabilities, TokenAmount::new(0));
+
         Ok(())
     }
 }
