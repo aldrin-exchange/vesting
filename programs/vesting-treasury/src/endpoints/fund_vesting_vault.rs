@@ -8,15 +8,17 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount};
 pub struct FundVestingVault<'info> {
     #[account(mut)]
     pub wallet_authority: Signer<'info>,
-    #[account(zero)]
+    #[account(mut)]
     pub vesting: Account<'info, Vesting>,
     #[account(
+        mut,
         constraint = vesting_vault.mint == vesting.mint.key()
         @ err::acc("Vestee wallet must be of correct mint")
     )]
     pub vesting_vault: Account<'info, TokenAccount>,
     // pub mint: Account<'info, Mint>,
     #[account(
+        mut,
         constraint = funding_wallet.mint == vesting.mint.key()
         @ err::acc("Vestee wallet must be of correct mint")
     )]
@@ -27,12 +29,15 @@ pub struct FundVestingVault<'info> {
 pub fn handle(ctx: Context<FundVestingVault>, funding_amount: TokenAmount) -> Result<()> {
     let accs = ctx.accounts;
 
-    // Check mints match
+    // TODO: Check mints match
 
     token::transfer(
         accs.as_transfer_funds_from_funding_wallet_to_vault_context(),
         funding_amount.amount,
     )?;
+
+    accs.vesting.vesting_vault_balance =
+        TokenAmount::new(accs.vesting.vesting_vault_balance.amount + funding_amount.amount);
 
     Ok(())
 }
