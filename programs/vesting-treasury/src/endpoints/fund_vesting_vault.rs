@@ -2,7 +2,7 @@
 
 use crate::prelude::*;
 
-use anchor_spl::token::{self, Mint, Token, TokenAccount};
+use anchor_spl::token::{self, Token, TokenAccount};
 
 #[derive(Accounts)]
 pub struct FundVestingVault<'info> {

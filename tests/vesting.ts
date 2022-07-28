@@ -274,8 +274,7 @@ export class Vesting {
     const vestingKeypair = input.vestingKeypair ?? this.keypair;
     const walletAuthority = input.walletAuthority ?? Keypair.generate();
     const vestingVault = input.vestingVault ?? await this.vestingVault();
-    // TODO: Make sure no "unable to find blockhash" error occurs
-    const fundingWallet = input.fundingWallet ?? 
+    const fundingWallet = input.fundingWallet ??
       (await createAccount(provider.connection, payer, this.mint, walletAuthority.publicKey));
     const skipAuthoritySignature = input.skipAuthoritySignature ?? false;
 
