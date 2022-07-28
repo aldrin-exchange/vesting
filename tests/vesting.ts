@@ -50,6 +50,7 @@ export interface FundVestingVault{
 }
 
 export interface WithdrawVestedTokens{
+  user: Keypair;
   vestingKeypair: Keypair;
   vestingVault: PublicKey;
   pda: PublicKey;
@@ -303,7 +304,8 @@ export class Vesting {
   public async withdrawVestedTokens(
     input: Partial<WithdrawVestedTokens> = {},
     withdrawAmount: number,
-    ) {
+  ) {
+    const user = input.user ?? Keypair.generate();
     const vestingKeypair = input.vestingKeypair ?? this.keypair;
     const vestingVault = input.vestingVault ?? await this.vestingVault();
     const vestingSignerPda =

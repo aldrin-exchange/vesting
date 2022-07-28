@@ -10,9 +10,10 @@ import { errLogs, provider, payer, getErr } from "../helpers";
 import { Vesting } from "../vesting";
 
 export function test() {
-  describe("fund_vesting_vault", () => {
+  describe.only("withdraw_vested_tokens", () => {
     const adminKeypair = Keypair.generate();
     const walletAuthority = Keypair.generate();
+    let vesteeWallet: PublicKey;
     let fundingWallet: PublicKey;
     let vestingMint: PublicKey;
     let vesting: Vesting;
@@ -27,10 +28,20 @@ export function test() {
       );
     });
 
+    beforeEach("create vestee wallet", async () => {
+      vesteeWallet = await createAccount(
+        provider.connection,
+        payer,
+        vestingMint,
+        payer.publicKey,
+        Keypair.generate(),
+      );
+    });
+
     beforeEach("create vesting account", async () => {
       vesting = await Vesting.init({
         adminKeypair,
-        // vesteeWallet,
+        vesteeWallet,
         mint: vestingMint,
       });
     });
@@ -53,7 +64,8 @@ export function test() {
       );
     });
 
-    it("fails if authority isn't signer", async () => {
+    
+    it("fails if pda is not correct", async () => {
     //   const logs = await getErr(
     //     vesting.fundVestingVault(
     //       {
@@ -68,7 +80,7 @@ export function test() {
     //   expect(logs).to.contain("Signature verification failed");
     });
 
-    it("fails if wallet mint isn't equal to vesting mint", async () => {
+    it("fails if wrong vestee wallet", async () => {
     //   const fakeMint = await createMint(
     //     provider.connection,
     //     payer,
@@ -116,14 +128,19 @@ export function test() {
     //   );
     });
 
-    it("works", async () => {
-    //   const vestingInfoBefore = await vesting.fetch();
+    it.only("works", async () => {
+      const vestingInfoBefore = await vesting.fetch();
+      
+      await vesting.updateVestedTokens();
 
-    //   await vesting.fundVestingVault({ walletAuthority, fundingWallet }, 5_000);
-    //   const vestingInfoAfter1 = await vesting.fetch();
-    //   await vesting.fundVestingVault({ walletAuthority, fundingWallet }, 2_000);
-    //   const vestingInfoAfter2 = await vesting.fetch();
+      await vesting.fundVestingVault({ walletAuthority, fundingWallet }, 5_000);
+      // await vesting.withdrawVestedTokens({ vesteeWallet }, 5_000);
+      let logs = await errLogs(vesting.withdrawVestedTokens({ vesteeWallet }, 5_000));
+      console.log(logs)
+      const vestingInfoAfter = await vesting.fetch();
 
+      // console.log("vestingInfoBefore: ",vestingInfoBefore)
+      // console.log("vestingInfoAfter: ",vestingInfoAfter)
     //   // Check that the vestingVaultBalance is correct
     //   expect(vestingInfoBefore.vestingVaultBalance.amount.toNumber()).to.eq(0);
     //   expect(vestingInfoAfter1.vestingVaultBalance.amount.toNumber()).to.eq(

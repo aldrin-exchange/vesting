@@ -4,7 +4,7 @@ import * as createVestingSchedule from "./endpoints/create-vesting-schedule";
 import * as changeVestingWallet from "./endpoints/change-vestee-wallet";
 import * as updateVestedTokens from "./endpoints/update-vested-tokens";
 import * as fundVestingVault from "./endpoints/fund-vesting-vault";
-import * as withdrawVestedTokens from "./endpoints/fund-vesting-vault";
+import * as withdrawVestedTokens from "./endpoints/withdraw-vested-tokens";
 
 import { airdrop, provider } from "./helpers";
 
