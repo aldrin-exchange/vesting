@@ -39,6 +39,10 @@ pub fn handle(ctx: Context<FundVestingVault>, funding_amount: TokenAmount) -> Re
     accs.vesting.vesting_vault_balance =
         TokenAmount::new(accs.vesting.vesting_vault_balance.amount + funding_amount.amount);
 
+    // Since more tokens are being added to the vault we need to update how
+    // much of the vested tokens is currently unfunded, if any
+    accs.vesting.update_unfunded_liability()?;
+
     Ok(())
 }
 impl<'info> FundVestingVault<'info> {

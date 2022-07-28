@@ -26,5 +26,10 @@ pub fn handle(ctx: Context<UpdateVestedTokens>) -> Result<()> {
     }
 
     accs.vesting.update_vested_tokens(clock_ts)?;
+
+    // Since more tokens may be vested we need to update how much of
+    // those vested tokens is currently unfunded
+    accs.vesting.update_unfunded_liability()?;
+
     Ok(())
 }
