@@ -45,4 +45,11 @@ pub mod vesting_treasury {
     ) -> Result<()> {
         endpoints::fund_vesting_vault::handle(ctx, funding_amount)
     }
+
+    pub fn withdraw_vested_tokens(
+        ctx: Context<WithdrawVestedTokens>,
+        withdraw_amount: TokenAmount,
+    ) -> Result<()> {
+        endpoints::withdraw_vested_tokens::handle(ctx, withdraw_amount)
+    }
 }
