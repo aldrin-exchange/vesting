@@ -12,15 +12,15 @@ pub struct FundVestingVault<'info> {
     pub vesting: Account<'info, Vesting>,
     #[account(
         mut,
-        constraint = vesting_vault.mint == vesting.mint.key()
-        @ err::acc("Vestee wallet must be of correct mint")
+        constraint = vesting_vault.key() == vesting.vault.key()
+        @ err::acc("Vault input does not match the vault in the vesting account")
     )]
     pub vesting_vault: Account<'info, TokenAccount>,
     // pub mint: Account<'info, Mint>,
     #[account(
         mut,
         constraint = funding_wallet.mint == vesting.mint.key()
-        @ err::acc("Vestee wallet must be of correct mint")
+        @ err::acc("Funding wallet must be of correct mint")
     )]
     pub funding_wallet: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,

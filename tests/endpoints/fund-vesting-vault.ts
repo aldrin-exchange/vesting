@@ -48,12 +48,65 @@ export function test() {
         );
       });
 
+    it("fails if authority isn't signer", async () => {
+      const logs = await getErr(
+        vesting.fundVestingVault({
+            walletAuthority,
+            fundingWallet,
+            skipAuthoritySignature: true,
+        },
+        5_000
+    ));
+
+      expect(logs).to.contain("Signature verification failed");
+    });
+
+    it("fails if wallet mint isn't equal to vesting mint", async () => {
+        const fakeMint = await createMint(
+          provider.connection,
+          payer,
+          payer.publicKey,
+          null,
+          9
+        );
+        const fakeWallet = await createAccount(
+            provider.connection,
+            payer,
+            fakeMint,
+            walletAuthority.publicKey
+          );
+  
+        const logs = await errLogs(
+            vesting.fundVestingVault({walletAuthority, fundingWallet: fakeWallet}, 5_000)
+        );
+        expect(logs).to.contain(
+          "Funding wallet must be of correct mint"
+        );
+    });
+
+    it("fails if wrong vesting vault", async () => {
+        const fakeVault = await createAccount(
+            provider.connection,
+            payer,
+            vestingMint,
+            payer.publicKey,
+            Keypair.generate()
+          );
+  
+        const logs = await errLogs(
+            vesting.fundVestingVault({walletAuthority, fundingWallet: fundingWallet, vestingVault: fakeVault}, 5_000)
+        );
+        expect(logs).to.contain(
+          "Vault input does not match the vault in the vesting account"
+        );
+    });
+
     it("works", async () => {
       const vestingInfoBefore = await vesting.fetch();
 
-      await vesting.fundVestingVault({walletAuthority,fundingWallet}, 5_000);
+      await vesting.fundVestingVault({walletAuthority, fundingWallet}, 5_000);
       const vestingInfoAfter1 = await vesting.fetch();
-      await vesting.fundVestingVault({walletAuthority,fundingWallet}, 2_000);
+      await vesting.fundVestingVault({walletAuthority, fundingWallet}, 2_000);
       const vestingInfoAfter2 = await vesting.fetch();
 
       // Check that the vestingVaultBalance is correct
