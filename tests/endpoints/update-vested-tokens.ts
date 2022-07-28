@@ -45,13 +45,18 @@ export function test() {
 
       const vestingInfoAfter = await vesting.fetch();
 
-      // Check that the cumulativeVestedAmount changes state
+      // Check that the cumulativeVestedAmount and unfunded liability
+      // changes state
       expect(vestingInfoBefore.cumulativeVestedAmount.amount.toNumber()).to.eq(
         0
       );
       expect(
         vestingInfoAfter.cumulativeVestedAmount.amount.toNumber()
       ).to.above(0);
+      expect(vestingInfoBefore.unfundedLiabilities.amount.toNumber()).to.eq(0);
+      expect(vestingInfoAfter.unfundedLiabilities.amount.toNumber()).to.above(
+        0
+      );
 
       // Everything else remains with the same default values
       expect(vestingInfoAfter.totalVestingAmount.amount.toNumber()).to.eq(
@@ -68,7 +73,6 @@ export function test() {
         vestingInfoAfter.cumulativeWithdrawnAmount.amount.toNumber()
       ).to.eq(0);
       expect(vestingInfoAfter.vestingVaultBalance.amount.toNumber()).to.eq(0);
-      expect(vestingInfoAfter.unfundedLiabilities.amount.toNumber()).to.eq(0);
     });
   });
 }
