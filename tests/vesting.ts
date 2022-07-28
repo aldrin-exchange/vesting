@@ -41,6 +41,16 @@ export interface UpdateVestedTokensArgs {
   vestingKeypair: Keypair;
 }
 
+export interface FundVestingVault{
+  vestingKeypair: Keypair;
+  walletAuthority: Keypair;
+  vestingVault: PublicKey;
+  fundingWallet: PublicKey;
+  skipAuthoritySignature: boolean,
+}
+
+
+
 export class Vesting {
   public get id(): PublicKey {
     return this.keypair.publicKey;
@@ -254,6 +264,36 @@ export class Vesting {
       })
       .signers(signers)
       .preInstructions(preInstructions)
+      .rpc();
+  }
+
+  public async fundVestingVault(
+    input: Partial<FundVestingVault> = {},
+    fundingAmount: number,
+    ) {
+    const vestingKeypair = input.vestingKeypair ?? this.keypair;
+    const walletAuthority = input.walletAuthority ?? Keypair.generate();
+    const vestingVault = input.vestingVault ?? await this.vestingVault();
+    // TODO: Make sure no "unable to find blockhash" error occurs
+    const fundingWallet = input.fundingWallet ?? 
+      (await createAccount(provider.connection, payer, this.mint, walletAuthority.publicKey));
+    const skipAuthoritySignature = input.skipAuthoritySignature ?? false;
+
+      const signers = [];
+      if (!skipAuthoritySignature) {
+        signers.push(walletAuthority);
+      }
+
+    await vesting.methods
+      .fundVestingVault({amount: new BN(fundingAmount)})
+      .accounts({
+        vesting: vestingKeypair.publicKey,
+        vestingVault,
+        walletAuthority: walletAuthority.publicKey,
+        fundingWallet,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers(signers)
       .rpc();
   }
 
