@@ -49,8 +49,12 @@ export interface FundVestingVault{
   skipAuthoritySignature: boolean,
 }
 
-
-
+export interface WithdrawVestedTokens{
+  vestingKeypair: Keypair;
+  vestingVault: PublicKey;
+  pda: PublicKey;
+  vesteeWallet: PublicKey;
+}
 export class Vesting {
   public get id(): PublicKey {
     return this.keypair.publicKey;
@@ -296,4 +300,42 @@ export class Vesting {
       .rpc();
   }
 
+  public async withdrawVestedTokens(
+    input: Partial<WithdrawVestedTokens> = {},
+    withdrawAmount: number,
+    ) {
+    const vestingKeypair = input.vestingKeypair ?? this.keypair;
+    const vestingVault = input.vestingVault ?? await this.vestingVault();
+    const vestingSignerPda =
+    input.pda ??
+    (await (async () => {
+      const [pda, _] = await Vesting.signerFrom(vestingKeypair.publicKey);
+      return pda;
+    })());
+
+    const vesteeWallet = input.vesteeWallet ??
+      (await (async () => {
+        const wallet = await createAccount(
+          provider.connection,
+          payer,
+          this.mint,
+          payer.publicKey
+        )
+        return wallet;
+    })());
+  
+      const signers = [];
+
+    await vesting.methods
+      .withdrawVestedTokens({amount: new BN(withdrawAmount)})
+      .accounts({
+        vesting: vestingKeypair.publicKey,
+        vestingVault,
+        vestingSigner: vestingSignerPda,
+        vesteeWallet,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers(signers)
+      .rpc();
+  }
 }
