@@ -170,7 +170,7 @@ impl Vesting {
                     .signed_duration_since(cliff_dt.date())
                     .num_days();
 
-                return Ok(delta_periods as u64);
+                Ok(delta_periods as u64)
             }
             PeriodType::Monthly => {
                 let delta_years = (current_dt.year() - cliff_dt.year()) as u32;
@@ -205,13 +205,11 @@ impl Vesting {
                             + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
                     }
                 };
-                return Ok(delta_periods as u64);
+                Ok(delta_periods as u64)
             }
-            _ => {
-                return Err(error!(err::acc(
-                    "Current program only supports Daily or Monthly PeriodType"
-                )));
-            }
+            _ => Err(error!(err::acc(
+                "Current program only supports Daily or Monthly PeriodType"
+            ))),
         }
     }
 
@@ -223,13 +221,11 @@ impl Vesting {
         match self.period_type {
             PeriodType::Daily => date
                 .checked_add_signed(Duration::days(periods as i64))
-                .ok_or(error!(TreasuryError::InvariantViolation)),
+                .ok_or_else(|| error!(TreasuryError::InvariantViolation)),
             PeriodType::Monthly => Ok(shift_months(date, periods as i32)),
-            _ => {
-                return Err(error!(err::acc(
-                    "Current program only supports Daily or Monthly PeriodType"
-                )));
-            }
+            _ => Err(error!(err::acc(
+                "Current program only supports Daily or Monthly PeriodType"
+            ))),
         }
     }
 
