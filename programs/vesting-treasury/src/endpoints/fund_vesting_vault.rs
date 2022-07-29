@@ -1,4 +1,8 @@
-//! Funds [`vesting_vault`] account.
+//! Funds [`vesting_vault`] account. In order for the vested tokens to be
+//! withdrawn from the vesting vault, the vault first needs to be funded with
+//! tokens of the vesting mint. We track the amount of tokens that the admin
+//! needs to deposit in vesting vault in order to fulfill the promises stated
+//! on the vesting schedule via the [`Vesting`] field [`unfunded_liability`].
 
 use crate::prelude::*;
 
