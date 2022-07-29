@@ -54,9 +54,7 @@ export function test() {
         vestingInfoAfter.cumulativeVestedAmount.amount.toNumber()
       ).to.above(0);
       expect(vestingInfoBefore.unfundedLiability.amount.toNumber()).to.eq(0);
-      expect(vestingInfoAfter.unfundedLiability.amount.toNumber()).to.above(
-        0
-      );
+      expect(vestingInfoAfter.unfundedLiability.amount.toNumber()).to.above(0);
 
       // Everything else remains with the same default values
       expect(vestingInfoAfter.totalVestingAmount.amount.toNumber()).to.eq(
