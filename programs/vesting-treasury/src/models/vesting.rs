@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use chrono::Duration;
 use std::mem;
 
 #[derive(Default, Debug)]
@@ -569,6 +570,35 @@ mod tests {
         vesting.update_unfunded_liability()?;
 
         assert_eq!(vesting.unfunded_liability, TokenAmount::new(0));
+
+        Ok(())
+    }
+
+    #[test]
+    fn it_computes_delta_periods_daily() -> Result<()> {
+        let mut vesting = Vesting {
+            period_type: PeriodType::Daily,
+            ..Default::default()
+        };
+        let cliff_ts = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
+        let current_ts = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
+
+        // Converting timestamps to datetimes
+        let mut current_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(current_ts.time, 0), Utc);
+
+        let cliff_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(cliff_ts.time, 0), Utc);
+
+        let mut delta_days = vesting.compute_delta_periods(current_dt, cliff_dt)?;
+
+        assert_eq!(delta_days, 0);
+        for i in 1..=366 {
+            current_dt = current_dt.checked_add_signed(Duration::days(1)).unwrap();
+
+            delta_days = vesting.compute_delta_periods(current_dt, cliff_dt)?;
+            assert_eq!(delta_days, i);
+        }
 
         Ok(())
     }
