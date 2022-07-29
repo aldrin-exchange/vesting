@@ -145,8 +145,8 @@ export function test() {
       expect(
         vestingInfoAfter.cumulativeWithdrawnAmount.amount.toNumber()
       ).to.eq(0);
-      expect(vestingInfoAfter.vestingVaultBalance.amount.toNumber()).to.eq(0);
-      expect(vestingInfoAfter.unfundedLiabilities.amount.toNumber()).to.eq(0);
+      expect(vestingInfoAfter.vaultBalance.amount.toNumber()).to.eq(0);
+      expect(vestingInfoAfter.unfundedLiability.amount.toNumber()).to.eq(0);
     });
   });
 }
