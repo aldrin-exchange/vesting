@@ -47,10 +47,10 @@ pub fn handle(
     total_periods: u64,
     period_type: u32,
 ) -> Result<()> {
-    if period_type != 1 {
+    if period_type >= 2 {
         return Err(error!(err::arg(
             "The current contract version only supports\
-             vesting schedules with monthly periods."
+             vesting schedules with daily or monthly periods"
         )));
     }
 

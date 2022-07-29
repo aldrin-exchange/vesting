@@ -257,10 +257,11 @@ impl Default for PeriodType {
 impl PeriodType {
     pub fn from_u32(value: u32) -> Result<PeriodType> {
         match value {
-            1 => Ok(PeriodType::Monthly),
-            2 => Ok(PeriodType::Quarterly),
-            3 => Ok(PeriodType::SemiAnnually),
-            4 => Ok(PeriodType::Yearly),
+            1 => Ok(PeriodType::Daily),
+            2 => Ok(PeriodType::Monthly),
+            3 => Ok(PeriodType::Quarterly),
+            4 => Ok(PeriodType::SemiAnnually),
+            5 => Ok(PeriodType::Yearly),
             _ => Err(error!(err::arg("The period type enumeration is invalid"))),
         }
     }

@@ -18,10 +18,12 @@ pub fn handle(ctx: Context<UpdateVestedTokens>) -> Result<()> {
 
     let clock_ts = accs.clock.unix_timestamp;
 
-    if accs.vesting.period_type != PeriodType::Monthly {
+    if accs.vesting.period_type != PeriodType::Monthly
+        || accs.vesting.period_type != PeriodType::Daily
+    {
         return Err(error!(err::arg(
             "The current contract version only supports\
-             vesting schedules with monthly periods."
+                 vesting schedules with daily or monthly periods"
         )));
     }
 
