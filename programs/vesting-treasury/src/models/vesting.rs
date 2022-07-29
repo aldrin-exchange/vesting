@@ -15,17 +15,17 @@ pub struct Vesting {
     pub vault: Pubkey,
     /// The total amount that will vest over time
     pub total_vesting_amount: TokenAmount,
-    /// Amount that is vested thus far
+    /// Cumulative amount that vested thus far
     pub cumulative_vested_amount: TokenAmount,
-    /// Amount that has been withdrawn thus far
+    /// Cumulative amount withdrawn thus far
     pub cumulative_withdrawn_amount: TokenAmount,
     /// Current amount sitting in the vesting vault
-    pub vesting_vault_balance: TokenAmount,
+    pub vault_balance: TokenAmount,
     ///The unfunded liability is the amount of vested tokens that a user
     /// is already allowed to withdraw but are still not available in the
     /// vesting vault, therefore constituting a liability on behalf of
     /// the funder.
-    pub unfunded_liabilities: TokenAmount,
+    pub unfunded_liability: TokenAmount,
     /// The start time in Unix Timestamp of the vesting period
     pub start_ts: TimeStamp,
     /// The amount of periods in total in the vesting schedule
@@ -179,13 +179,13 @@ impl Vesting {
             .try_sub(Decimal::from(self.cumulative_withdrawn_amount))?
             .try_round()?;
 
-        if self.vesting_vault_balance.amount >= liability {
+        if self.vault_balance.amount >= liability {
             // Because the whole current liability is funded or overfunded
             return Ok(());
         }
-        let unfunded_liability = liability - self.vesting_vault_balance.amount;
+        let unfunded_liability = liability - self.vault_balance.amount;
 
-        self.unfunded_liabilities = TokenAmount::new(unfunded_liability);
+        self.unfunded_liability = TokenAmount::new(unfunded_liability);
 
         Ok(())
     }
@@ -479,14 +479,14 @@ mod tests {
         let mut vesting = Vesting {
             cumulative_vested_amount: TokenAmount::new(5_000),
             cumulative_withdrawn_amount: TokenAmount::new(2500),
-            vesting_vault_balance: TokenAmount::new(500),
+            vault_balance: TokenAmount::new(500),
             ..Default::default()
         };
 
         vesting.update_unfunded_liability()?;
 
         // Unfunded liability = 5_000 - 2_500 - 500
-        assert_eq!(vesting.unfunded_liabilities, TokenAmount::new(2_000));
+        assert_eq!(vesting.unfunded_liability, TokenAmount::new(2_000));
 
         Ok(())
     }
@@ -496,13 +496,13 @@ mod tests {
         let mut vesting = Vesting {
             cumulative_vested_amount: TokenAmount::new(5_000),
             cumulative_withdrawn_amount: TokenAmount::new(5_000),
-            vesting_vault_balance: TokenAmount::new(0),
+            vault_balance: TokenAmount::new(0),
             ..Default::default()
         };
 
         vesting.update_unfunded_liability()?;
 
-        assert_eq!(vesting.unfunded_liabilities, TokenAmount::new(0));
+        assert_eq!(vesting.unfunded_liability, TokenAmount::new(0));
 
         Ok(())
     }
@@ -512,13 +512,13 @@ mod tests {
         let mut vesting = Vesting {
             cumulative_vested_amount: TokenAmount::new(5_000),
             cumulative_withdrawn_amount: TokenAmount::new(0),
-            vesting_vault_balance: TokenAmount::new(10_000),
+            vault_balance: TokenAmount::new(10_000),
             ..Default::default()
         };
 
         vesting.update_unfunded_liability()?;
 
-        assert_eq!(vesting.unfunded_liabilities, TokenAmount::new(0));
+        assert_eq!(vesting.unfunded_liability, TokenAmount::new(0));
 
         Ok(())
     }

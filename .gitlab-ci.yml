@@ -4,7 +4,7 @@ stages:
 
 variables:
   KATEX_VERSION: "0.13.9"
-  SOLANA_VERSION: "1.10.29"
+  SOLANA_VERSION: "1.9.18"
 
 # runs unit tests in parallel with other build stage jobs
 unit:
@@ -16,7 +16,7 @@ unit:
         coverage_format: cobertura
         path: target/release/coverage/cobertura.xml
   cache:
-    key: "unit-cache-${CI_COMMIT_BRANCH}"
+    key: "unit-cache-3-${CI_COMMIT_BRANCH}"
     paths:
       - target
   # manual trigger on feature branches to save CI minutes
@@ -34,7 +34,7 @@ program:
   stage: build
   image: registry.gitlab.com/crypto_project/defi/infra/rust-solana:${SOLANA_VERSION}
   cache:
-    key: "program-cache-${CI_COMMIT_BRANCH}"
+    key: "unit-cache-3-${CI_COMMIT_BRANCH}"
     paths:
       - target
   artifacts:

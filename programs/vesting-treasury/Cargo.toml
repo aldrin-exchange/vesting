@@ -17,7 +17,7 @@ no-idl = []
 no-log-ix-name = []
 
 [dependencies]
-anchor-lang = "0.25.0"
-anchor-spl = "0.25.0"
-decimal = { git = "https://github.com/aldrin-exchange/solana-decimal", tag = "0.5.0" }
+anchor-lang = "0.24.2"
+anchor-spl = "0.24.2"
+decimal = { git = "https://github.com/aldrin-exchange/solana-decimal", tag = "0.4.0" }
 chrono = { version = "0.4.19", default-features = false }
