@@ -1,4 +1,8 @@
-//! Funds [`vesting_vault`] account.
+//! Funds [`vesting_vault`] account. In order for the vested tokens to be
+//! withdrawn from the vesting vault, the vault first needs to be funded with
+//! tokens of the vesting mint. We track the amount of tokens that the admin
+//! needs to deposit in vesting vault in order to fulfill the promises stated
+//! on the vesting schedule via the [`Vesting`] field [`unfunded_liability`].
 
 use crate::prelude::*;
 
@@ -28,15 +32,13 @@ pub struct FundVestingVault<'info> {
 pub fn handle(ctx: Context<FundVestingVault>, funding_amount: TokenAmount) -> Result<()> {
     let accs = ctx.accounts;
 
-    // TODO: Check mints match
-
     token::transfer(
         accs.as_transfer_funds_from_funding_wallet_to_vault_context(),
         funding_amount.amount,
     )?;
 
-    accs.vesting.vesting_vault_balance =
-        TokenAmount::new(accs.vesting.vesting_vault_balance.amount + funding_amount.amount);
+    accs.vesting.vault_balance =
+        TokenAmount::new(accs.vesting.vault_balance.amount + funding_amount.amount);
 
     // Since more tokens are being added to the vault we need to update how
     // much of the vested tokens is currently unfunded, if any

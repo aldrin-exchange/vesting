@@ -116,8 +116,8 @@ export function test() {
       expect(vestingInfo.vault).to.deep.eq(await vesting.vestingVault());
       expect(vestingInfo.cumulativeVestedAmount.amount.toNumber()).to.eq(0);
       expect(vestingInfo.cumulativeWithdrawnAmount.amount.toNumber()).to.eq(0);
-      expect(vestingInfo.vestingVaultBalance.amount.toNumber()).to.eq(0);
-      expect(vestingInfo.unfundedLiabilities.amount.toNumber()).to.eq(0);
+      expect(vestingInfo.vaultBalance.amount.toNumber()).to.eq(0);
+      expect(vestingInfo.unfundedLiability.amount.toNumber()).to.eq(0);
     });
   });
 }
