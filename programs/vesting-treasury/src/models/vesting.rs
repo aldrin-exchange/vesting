@@ -85,9 +85,10 @@ impl Vesting {
     /// the current timestamp given by the runtime.
     ///
     /// Vesting schedules have a cliff period following by a period where the
-    /// schedule vests periodically, usually monthly. The periodicity is given
-    /// by the `self.period_type`. As of this contract version only the
-    /// type `Monthly` is accepted by the endpoint that calls this method.
+    /// schedule vests periodically, usually monthly or daily. The periodicity
+    /// is given by the `self.period_type`. As of this contract version only the
+    /// type `Monthly` or `Daily` are supported by the endpoint that calls this
+    /// method.
     ///
     /// If we find ourselves before the end of the cliff period, the amount of
     /// tokens vested is nill, therefore we perform an early return and do not
@@ -119,42 +120,11 @@ impl Vesting {
             return Ok(());
         }
 
-        let delta_years = (current_dt.year() - cliff_dt.year()) as u32;
-
-        // We want to compute the amount of periods between two dates.
-        // Depending on the difference in years between the two dates we will
-        // have to perform different steps, described below
-        let delta_periods = match delta_years {
-            // This means that both dates are in the same year
-            // e.g. 15/03/2020 & 20/09/2020
-            0 => compute_periods_from_cliff_to_current_dt(cliff_dt, current_dt),
-            // This means that both dates are one year apart
-            // e.g. 15/03/2020 & 20/09/2021
-            // We therefore perform two distinct operations, for the first year
-            // and the second one
-            1 => {
-                // Periods from 15/03/2020 to 31/12/2020
-                compute_periods_from_cliff_to_eoy(cliff_dt)
-                    // Periods from 01/01/2021 to 20/09/2021
-                    + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
-            }
-            // This means that both dates are at least two years apart
-            // e.g. 15/03/2020 & 20/09/2024
-            // We therefore perform two distinct operations, for the first year,
-            // for the years in the middle and the last year
-            _ => {
-                // Periods from 15/03/2020 to 31/12/2020
-                compute_periods_from_cliff_to_eoy(cliff_dt)
-                    // Periods from 01/01/2020 to 31/12/2023
-                    + compute_periods_in_full_years(delta_years)
-                    // Periods from 01/01/2024 to 20/09/2024
-                    + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
-            }
-        };
+        let delta_periods = self.compute_delta_periods(current_dt, cliff_dt)?;
 
         // (cliff_periods + Δperiods) * total_amount / total_periods
         let cumulative_vested = Decimal::from(self.cliff_periods)
-            .try_add(Decimal::from(delta_periods as u64))?
+            .try_add(Decimal::from(delta_periods))?
             .try_div(Decimal::from(self.total_periods))?
             .try_mul(Decimal::from(self.total_vesting_amount))?
             .try_floor()?;
@@ -162,6 +132,78 @@ impl Vesting {
         self.cumulative_vested_amount = TokenAmount::new(cumulative_vested);
 
         Ok(())
+    }
+
+    /// This method computes the amount of periods between two dates. The
+    /// operations used to compute the result depend on the type of period
+    /// defined by the enum PeriodType.
+    ///
+    /// The current contract supports the PeriodType of `Daily` and `Monthly`.
+    ///
+    /// If the type is daily then the calculation is simply the difference in
+    /// full days between the cliff date and the current date. Note that the
+    /// current date is guaranteed to be higher or equal to the cliff date since
+    /// we only call this method after confirm that such condition holds.
+    ///
+    /// If the type is monthly then depending if both dates are in the same year
+    /// or if they are years apart from each other the method will break down
+    /// the calcualtion in three steps. The first year, the years in between
+    /// and the last year, and will call functions for each step
+    pub fn compute_delta_periods(
+        &mut self,
+        current_dt: DateTime<Utc>,
+        cliff_dt: DateTime<Utc>,
+    ) -> Result<u64> {
+        match self.period_type {
+            PeriodType::Daily => {
+                let delta_periods = current_dt
+                    .date()
+                    .signed_duration_since(cliff_dt.date())
+                    .num_days();
+
+                return Ok(delta_periods as u64);
+            }
+            PeriodType::Monthly => {
+                let delta_years = (current_dt.year() - cliff_dt.year()) as u32;
+
+                // We want to compute the amount of periods between two dates.
+                // Depending on the difference in years between the two dates we will
+                // have to perform different steps, described below
+                let delta_periods = match delta_years {
+                    // This means that both dates are in the same year
+                    // e.g. 15/03/2020 & 20/09/2020
+                    0 => compute_periods_from_cliff_to_current_dt(cliff_dt, current_dt),
+                    // This means that both dates are one year apart
+                    // e.g. 15/03/2020 & 20/09/2021
+                    // We therefore perform two distinct operations, for the first year
+                    // and the second one
+                    1 => {
+                        // Periods from 15/03/2020 to 31/12/2020
+                        compute_periods_from_cliff_to_eoy(cliff_dt)
+                            // Periods from 01/01/2021 to 20/09/2021
+                            + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
+                    }
+                    // This means that both dates are at least two years apart
+                    // e.g. 15/03/2020 & 20/09/2024
+                    // We therefore perform two distinct operations, for the first year,
+                    // for the years in the middle and the last year
+                    _ => {
+                        // Periods from 15/03/2020 to 31/12/2020
+                        compute_periods_from_cliff_to_eoy(cliff_dt)
+                            // Periods from 01/01/2020 to 31/12/2023
+                            + compute_periods_in_full_years(delta_years)
+                            // Periods from 01/01/2024 to 20/09/2024
+                            + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
+                    }
+                };
+                return Ok(delta_periods as u64);
+            }
+            _ => {
+                return Err(error!(err::acc(
+                    "Current program only supports Daily or Monthly PeriodType"
+                )));
+            }
+        }
     }
 
     /// It updates unfunded liability of the vesting account. The unfunded
@@ -199,6 +241,7 @@ impl Vesting {
 
 #[derive(AnchorDeserialize, AnchorSerialize, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PeriodType {
+    Daily,
     Monthly,
     Quarterly,
     SemiAnnually,
