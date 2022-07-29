@@ -4,13 +4,12 @@ import {
   createMint,
   createAccount,
   mintTo,
-  getAccount,
 } from "@solana/spl-token";
-import { errLogs, provider, payer, getErr } from "../helpers";
+import { errLogs, provider, payer } from "../helpers";
 import { Vesting } from "../vesting";
 
 export function test() {
-  describe.only("withdraw_vested_tokens", () => {
+  describe("withdraw_vested_tokens", () => {
     const adminKeypair = Keypair.generate();
     const walletAuthority = Keypair.generate();
     let vesteeWallet: PublicKey;
@@ -34,7 +33,7 @@ export function test() {
         payer,
         vestingMint,
         payer.publicKey,
-        Keypair.generate(),
+        Keypair.generate()
       );
     });
 
@@ -64,107 +63,99 @@ export function test() {
       );
     });
 
-    
     it("fails if pda is not correct", async () => {
-    //   const logs = await getErr(
-    //     vesting.fundVestingVault(
-    //       {
-    //         walletAuthority,
-    //         fundingWallet,
-    //         skipAuthoritySignature: true,
-    //       },
-    //       5_000
-    //     )
-    //   );
-
-    //   expect(logs).to.contain("Signature verification failed");
+      const logs = await errLogs(
+        vesting.withdrawVestedTokens(
+          { pda: Keypair.generate().publicKey, vesteeWallet },
+          10
+        )
+      );
+      expect(logs).to.contain("seeds constraint was violated");
     });
 
     it("fails if wrong vestee wallet", async () => {
-    //   const fakeMint = await createMint(
-    //     provider.connection,
-    //     payer,
-    //     payer.publicKey,
-    //     null,
-    //     9
-    //   );
-    //   const fakeWallet = await createAccount(
-    //     provider.connection,
-    //     payer,
-    //     fakeMint,
-    //     walletAuthority.publicKey
-    //   );
+      const fakeMint = await createMint(
+        provider.connection,
+        payer,
+        payer.publicKey,
+        null,
+        9
+      );
+      const fakeWallet = await createAccount(
+        provider.connection,
+        payer,
+        fakeMint,
+        walletAuthority.publicKey
+      );
 
-    //   const logs = await errLogs(
-    //     vesting.fundVestingVault(
-    //       { walletAuthority, fundingWallet: fakeWallet },
-    //       5_000
-    //     )
-    //   );
-    //   expect(logs).to.contain("Funding wallet must be of correct mint");
+      const logs = await errLogs(
+        vesting.withdrawVestedTokens({ vesteeWallet: fakeWallet }, 10)
+      );
+
+      expect(logs).to.contain(
+        "Vestee wallet input does not match the vestee wallet in the vesting account"
+      );
     });
 
     it("fails if wrong vesting vault", async () => {
-    //   const fakeVault = await createAccount(
-    //     provider.connection,
-    //     payer,
-    //     vestingMint,
-    //     payer.publicKey,
-    //     Keypair.generate()
-    //   );
+      const fakeVault = await createAccount(
+        provider.connection,
+        payer,
+        vestingMint,
+        payer.publicKey,
+        Keypair.generate()
+      );
 
-    //   const logs = await errLogs(
-    //     vesting.fundVestingVault(
-    //       {
-    //         walletAuthority,
-    //         fundingWallet,
-    //         vestingVault: fakeVault,
-    //       },
-    //       5_000
-    //     )
-    //   );
-    //   expect(logs).to.contain(
-    //     "Vault input does not match the vault in the vesting account"
-    //   );
+      const logs = await errLogs(
+        vesting.withdrawVestedTokens(
+          { vestingVault: fakeVault, vesteeWallet },
+          10
+        )
+      );
+
+      expect(logs).to.contain(
+        "Vault input does not match the vault in the vesting account"
+      );
     });
 
-    it.only("works", async () => {
-      const vestingInfoBefore = await vesting.fetch();
-      
+    it("works", async () => {
       await vesting.updateVestedTokens();
+      const vestingInfoBefore = await vesting.fetch();
+      const vestedAmount =
+        vestingInfoBefore.cumulativeVestedAmount.amount.toNumber();
 
-      await vesting.fundVestingVault({ walletAuthority, fundingWallet }, 5_000);
-      // await vesting.withdrawVestedTokens({ vesteeWallet }, 5_000);
-      let logs = await errLogs(vesting.withdrawVestedTokens({ vesteeWallet }, 5_000));
-      console.log(logs)
+      expect(vestingInfoBefore.unfundedLiability.amount.toNumber()).to.eq(
+        vestedAmount
+      );
+
+      await vesting.fundVestingVault(
+        { walletAuthority, fundingWallet },
+        vestedAmount - 10
+      );
+      await vesting.withdrawVestedTokens({ vesteeWallet }, vestedAmount - 15);
+
       const vestingInfoAfter = await vesting.fetch();
 
-      // console.log("vestingInfoBefore: ",vestingInfoBefore)
-      // console.log("vestingInfoAfter: ",vestingInfoAfter)
-    //   // Check that the vestingVaultBalance is correct
-    //   expect(vestingInfoBefore.vestingVaultBalance.amount.toNumber()).to.eq(0);
-    //   expect(vestingInfoAfter1.vestingVaultBalance.amount.toNumber()).to.eq(
-    //     5_000
-    //   );
-    //   expect(vestingInfoAfter2.vestingVaultBalance.amount.toNumber()).to.eq(
-    //     7_000
-    //   );
+      expect(vestingInfoAfter.cumulativeVestedAmount.amount.toNumber()).to.eq(
+        vestedAmount
+      );
+      expect(vestingInfoAfter.unfundedLiability.amount.toNumber()).to.eq(10);
+      expect(vestingInfoAfter.vaultBalance.amount.toNumber()).to.eq(5);
+      expect(
+        vestingInfoAfter.cumulativeWithdrawnAmount.amount.toNumber()
+      ).to.eq(vestedAmount - 15);
 
-    //   // Everything else remains with the same default values
-    //   expect(vestingInfoAfter2.totalVestingAmount.amount.toNumber()).to.eq(
-    //     10_000
-    //   );
-    //   expect(vestingInfoAfter2.startTs.time.toNumber()).to.eq(1577836801);
-    //   expect(vestingInfoAfter2.cliffPeriods.toNumber()).to.eq(12);
-    //   expect(vestingInfoAfter2.totalPeriods.toNumber()).to.eq(48);
-    //   expect(vestingInfoAfter2.periodType).to.deep.eq({ monthly: {} });
-    //   expect(vestingInfoAfter2.admin).to.deep.eq(adminKeypair.publicKey);
-    //   expect(vestingInfoAfter2.mint).to.deep.eq(vestingMint);
-    //   expect(vestingInfoAfter2.vault).to.deep.eq(await vesting.vestingVault());
-    //   expect(
-    //     vestingInfoAfter2.cumulativeWithdrawnAmount.amount.toNumber()
-    //   ).to.eq(0);
-    //   expect(vestingInfoAfter2.unfundedLiabilities.amount.toNumber()).to.eq(0);
+      // Everything else remains with the same default values
+      expect(vestingInfoAfter.totalVestingAmount.amount.toNumber()).to.eq(
+        10_000
+      );
+      expect(vestingInfoAfter.startTs.time.toNumber()).to.eq(1577836801);
+      expect(vestingInfoAfter.cliffPeriods.toNumber()).to.eq(12);
+      expect(vestingInfoAfter.totalPeriods.toNumber()).to.eq(48);
+      expect(vestingInfoAfter.periodType).to.deep.eq({ monthly: {} });
+      expect(vestingInfoAfter.admin).to.deep.eq(adminKeypair.publicKey);
+      expect(vestingInfoAfter.mint).to.deep.eq(vestingMint);
+      expect(vestingInfoAfter.vault).to.deep.eq(await vesting.vestingVault());
     });
   });
 }

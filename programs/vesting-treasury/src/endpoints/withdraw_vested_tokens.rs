@@ -1,4 +1,8 @@
-//! TODO
+//! Endpoint for users to withdraw vested tokens from [`vesting_vault`] to
+//! the [`vestee_wallet`]. Whilst the endpoint is permissionless, only tokens
+//! that have been vested and subsequently funded by the administrator or
+//! any other agent, will be avaialble for transfer. The endpoint is made
+//! permissionless to more easily allow for automation.
 
 use crate::prelude::*;
 
@@ -23,7 +27,7 @@ pub struct WithdrawVestedTokens<'info> {
     #[account(
         mut,
         constraint = vestee_wallet.key() == vesting.vestee_wallet.key()
-        @ err::acc("Vestee wallet input does not match the\
+        @ err::acc("Vestee wallet input does not match the \
          vestee wallet in the vesting account")
     )]
     pub vestee_wallet: Account<'info, TokenAccount>,
@@ -43,7 +47,7 @@ pub fn handle(ctx: Context<WithdrawVestedTokens>, withdraw_amount: TokenAmount) 
         )));
     }
 
-    if withdraw_amount.amount > accs.vesting.vesting_vault_balance.amount {
+    if withdraw_amount.amount > accs.vesting.vault_balance.amount {
         return Err(error!(err::arg(
             "The amount of tokens to withdraw is higher \
             than the amount of tokens currently in vault, \
@@ -64,8 +68,15 @@ pub fn handle(ctx: Context<WithdrawVestedTokens>, withdraw_amount: TokenAmount) 
         withdraw_amount.amount,
     )?;
 
-    accs.vesting.vesting_vault_balance =
-        TokenAmount::new(accs.vesting.vesting_vault_balance.amount - withdraw_amount.amount);
+    // Update the vault balance and cumulative withdrawn state
+    // Note that we don't need to update unfunded liabilities because the delta
+    // by which the vault balance decreases is offset by the delta by which the
+    // cumulative withdrawn amount increases (same delta)
+    accs.vesting.vault_balance =
+        TokenAmount::new(accs.vesting.vault_balance.amount - withdraw_amount.amount);
+
+    accs.vesting.cumulative_withdrawn_amount =
+        TokenAmount::new(accs.vesting.cumulative_withdrawn_amount.amount + withdraw_amount.amount);
 
     Ok(())
 }

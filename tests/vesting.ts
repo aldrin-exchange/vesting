@@ -1,13 +1,11 @@
 import { vesting, payer, provider, airdrop } from "./helpers";
-import { Keypair, PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
+import { Keypair, PublicKey, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
 import {
   createAccount,
   createMint,
-  transfer,
   mintTo,
   Account,
   getAccount,
-  getOrCreateAssociatedTokenAccount,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { BN } from "@project-serum/anchor";
@@ -305,7 +303,6 @@ export class Vesting {
     input: Partial<WithdrawVestedTokens> = {},
     withdrawAmount: number,
   ) {
-    const user = input.user ?? Keypair.generate();
     const vestingKeypair = input.vestingKeypair ?? this.keypair;
     const vestingVault = input.vestingVault ?? await this.vestingVault();
     const vestingSignerPda =
@@ -325,8 +322,6 @@ export class Vesting {
         )
         return wallet;
     })());
-  
-      const signers = [];
 
     await vesting.methods
       .withdrawVestedTokens({amount: new BN(withdrawAmount)})
@@ -337,7 +332,6 @@ export class Vesting {
         vesteeWallet,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .signers(signers)
       .rpc();
   }
 }
