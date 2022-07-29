@@ -1,100 +1,33 @@
-//! Initializes new [`Vesting`] account. After this call,
-//! the admin can fund the vesting vault such that the tokens
-//! become available to the beneficiary as they vest over time.
+//! If the [`Vesting`] is fully vested and has no tokens that remain to be
+//! withdrawn, then the account is empty and can be closed without losing
+//! funds.
 use crate::prelude::*;
-
-use anchor_spl::token::{self, Mint, Token, TokenAccount};
 
 #[derive(Accounts)]
 pub struct CloseVestingSchedule<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
-    #[account(zero)]
+    #[account(
+        mut,
+        constraint = vesting.admin == admin.key()
+            @ err::acc("Admin does not own this vesting account"),
+        close = admin,
+    )]
     pub vesting: Account<'info, Vesting>,
-    /// CHECK: UNSAFE_CODES.md#signer
-    #[account(
-        seeds = [Vesting::SIGNER_PDA_PREFIX, vesting.key().as_ref()],
-        bump
-    )]
-    pub vesting_signer: AccountInfo<'info>,
-    /// CHECK: UNSAFE_CODES.md#token
-    #[account(
-        init,
-        payer = admin,
-        space = TokenAccount::LEN,
-        owner = token_program.key(),
-        seeds = [Vesting::VAULT_PREFIX, vesting.key().as_ref()],
-        bump,
-    )]
-    pub vesting_vault: AccountInfo<'info>,
-    pub mint: Account<'info, Mint>,
-    #[account(
-        constraint = vestee_wallet.mint == mint.key()
-        @ err::acc("Vestee wallet must be of correct mint")
-    )]
-    pub vestee_wallet: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-    /// CHECK: UNSAFE_CODES.md#token
-    pub rent: AccountInfo<'info>,
 }
 
 pub fn handle(ctx: Context<CloseVestingSchedule>) -> Result<()> {
-    // if period_type != 1 {
-    //     return Err(error!(err::arg(
-    //         "The current contract version only supports\
-    //          vesting schedules with monthly periods."
-    //     )));
-    // }
+    let vesting = &ctx.accounts.vesting;
 
-    // if cliff_periods > total_periods {
-    //     return Err(error!(err::arg(
-    //         "The number of cliff periods cannot be higher than total number of periods"
-    //     )));
-    // }
+    if vesting.cumulative_vested_amount < vesting.total_vesting_amount {
+        return Err(error!(err::acc("This vesting account is not fully vested")));
+    }
 
-    // let vesting_signer_bump_seed = *ctx.bumps.get("vesting_signer").unwrap();
-
-    // let accs = ctx.accounts;
-
-    // accs.vesting.admin = accs.admin.key();
-    // accs.vesting.vestee_wallet = accs.vestee_wallet.key();
-    // accs.vesting.mint = accs.mint.key();
-    // accs.vesting.vault = accs.vesting_vault.key();
-
-    // accs.vesting.total_vesting_amount = vesting_amount;
-
-    // accs.vesting.start_ts = start_ts;
-    // accs.vesting.total_periods = total_periods;
-    // accs.vesting.cliff_periods = cliff_periods;
-    // accs.vesting.period_type = PeriodType::from_u32(period_type)?;
-
-    // msg!("Initializing vesting vault");
-
-    // let signer_seed = &[
-    //     Vesting::SIGNER_PDA_PREFIX,
-    //     &accs.vesting.key().to_bytes()[..],
-    //     &[vesting_signer_bump_seed],
-    // ];
-    // token::initialize_account(
-    //     accs.as_init_vesting_vault_context()
-    //         .with_signer(&[&signer_seed[..]]),
-    // )?;
+    if vesting.cumulative_vested_amount > vesting.cumulative_withdrawn_amount {
+        return Err(error!(err::acc(
+            "This vested tokens of this vesting account are not fully withdrawn"
+        )));
+    }
 
     Ok(())
 }
-
-// impl<'info> CreateVestingSchedule<'info> {
-//     pub fn as_init_vesting_vault_context(
-//         &self,
-//     ) -> CpiContext<'_, '_, '_, 'info, token::InitializeAccount<'info>> {
-//         let cpi_accounts = token::InitializeAccount {
-//             mint: self.mint.to_account_info(),
-//             authority: self.vesting_signer.to_account_info(),
-//             rent: self.rent.to_account_info(),
-//             account: self.vesting_vault.to_account_info(),
-//         };
-//         let cpi_program = self.token_program.to_account_info();
-//         CpiContext::new(cpi_program, cpi_accounts)
-//     }
-// }
