@@ -48,12 +48,18 @@ export interface FundVestingVault{
 }
 
 export interface WithdrawVestedTokens{
-  user: Keypair;
   vestingKeypair: Keypair;
   vestingVault: PublicKey;
   pda: PublicKey;
   vesteeWallet: PublicKey;
 }
+
+export interface CloseVestingSchedule{
+  adminKeypair: Keypair;
+  vestingKeypair: Keypair;
+  skipAdminSignature: boolean;
+}
+
 export class Vesting {
   public get id(): PublicKey {
     return this.keypair.publicKey;
@@ -256,17 +262,12 @@ export class Vesting {
     ) {
     const vestingKeypair = input.vestingKeypair ?? this.keypair;
 
-    const preInstructions = [];
-    const signers = [];
-
     await vesting.methods
       .updateVestedTokens()
       .accounts({
         vesting: vestingKeypair.publicKey,
         clock: SYSVAR_CLOCK_PUBKEY,
       })
-      .signers(signers)
-      .preInstructions(preInstructions)
       .rpc();
   }
 
@@ -332,6 +333,30 @@ export class Vesting {
         vesteeWallet,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
+      .rpc();
+  }
+
+  public async closeVestingSchedule(
+    input: Partial<CloseVestingSchedule> = {},
+    ) {
+    const adminKeypair = input.adminKeypair ?? Keypair.generate();
+    await airdrop(adminKeypair.publicKey);
+
+    const vestingKeypair = input.vestingKeypair ?? this.keypair;
+    const skipAdminSignature = input.skipAdminSignature ?? false;
+
+    const signers = [];
+    if (!skipAdminSignature) {
+      signers.push(adminKeypair);
+    }
+
+    await vesting.methods
+      .closeVestingSchedule()
+      .accounts({
+        admin: adminKeypair.publicKey,
+        vesting: vestingKeypair.publicKey,
+      })
+      .signers(signers)
       .rpc();
   }
 }
