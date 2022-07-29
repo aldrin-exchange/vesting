@@ -106,17 +106,19 @@ impl Vesting {
 
         // cliff_dt marks the end of the cliff period
         // end_dt marks the end of the full vesting period
-        let cliff_dt = shift_months(start_dt, self.cliff_periods as i32);
-        let end_dt = shift_months(start_dt, self.total_periods as i32);
+        let cliff_dt = self.shift_periods(start_dt, self.cliff_periods)?;
+        let end_dt = self.shift_periods(start_dt, self.total_periods)?;
 
         if current_dt < cliff_dt {
-            // We are still in the cliff period and therefore we
-            // do not have to update the vested tokens because there are none
+            msg!(
+                "We are still in the cliff period and \
+                therefore there are no vested tokens yet"
+            );
             return Ok(());
         }
 
         if current_dt >= end_dt {
-            // This means the schedule is fully vested
+            msg!("All tokens are fully vested");
             self.cumulative_vested_amount = self.total_vesting_amount;
             return Ok(());
         }
@@ -155,6 +157,12 @@ impl Vesting {
         current_dt: DateTime<Utc>,
         cliff_dt: DateTime<Utc>,
     ) -> Result<u64> {
+        if current_dt < cliff_dt {
+            return Err(error!(err::arg(
+                "This function should never be called when current_dt < cliff_dt"
+            )));
+        }
+
         match self.period_type {
             PeriodType::Daily => {
                 let delta_periods = current_dt
@@ -199,6 +207,24 @@ impl Vesting {
                 };
                 return Ok(delta_periods as u64);
             }
+            _ => {
+                return Err(error!(err::acc(
+                    "Current program only supports Daily or Monthly PeriodType"
+                )));
+            }
+        }
+    }
+
+    /// Shifts a date according to the period defined. If the period defined in
+    /// the vesting account is `Monthly` then it will shift the date by n months
+    /// and if the period is `Daily` it will shift by n days, where n is the
+    /// argument `periods`
+    pub fn shift_periods(&mut self, date: DateTime<Utc>, periods: u64) -> Result<DateTime<Utc>> {
+        match self.period_type {
+            PeriodType::Daily => date
+                .checked_add_signed(Duration::days(periods as i64))
+                .ok_or(error!(TreasuryError::InvariantViolation)),
+            PeriodType::Monthly => Ok(shift_months(date, periods as i32)),
             _ => {
                 return Err(error!(err::acc(
                     "Current program only supports Daily or Monthly PeriodType"
@@ -461,8 +487,9 @@ mod tests {
     }
 
     #[test]
-    fn it_updates_vested_tokens() -> Result<()> {
+    fn it_updates_vested_tokens_monthly() -> Result<()> {
         let mut vesting = Vesting {
+            period_type: PeriodType::Monthly,
             total_vesting_amount: TokenAmount::new(10_000),
             cumulative_vested_amount: TokenAmount::new(0),
             start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
@@ -497,6 +524,49 @@ mod tests {
             } else {
                 1
             };
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn it_updates_vested_tokens_daily() -> Result<()> {
+        let mut vesting = Vesting {
+            period_type: PeriodType::Daily,
+            total_vesting_amount: TokenAmount::new(10_000),
+            cumulative_vested_amount: TokenAmount::new(0),
+            start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 10)),
+            total_periods: 100,
+            cliff_periods: 25,
+            ..Default::default()
+        };
+
+        let mut current_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(vesting.start_ts.time, 0), Utc);
+
+        let cliff_dt = current_dt
+            .checked_add_signed(Duration::days(vesting.cliff_periods as i64))
+            .unwrap();
+
+        let mut clock;
+        for i in 1..=110 {
+            current_dt = current_dt.checked_add_signed(Duration::days(1)).unwrap();
+
+            clock = TimeStamp::new_dt(current_dt.date());
+            vesting.update_vested_tokens(clock.time)?;
+
+            // Check that cumulative vested amount is correct
+            let vested_tokens = if current_dt < cliff_dt {
+                0
+            } else if i < 100 {
+                i * 10_000 / 100
+            } else {
+                10_000
+            };
+
+            assert_eq!(
+                vesting.cumulative_vested_amount,
+                TokenAmount::new(vested_tokens)
+            );
         }
         Ok(())
     }
@@ -598,6 +668,52 @@ mod tests {
 
             delta_days = vesting.compute_delta_periods(current_dt, cliff_dt)?;
             assert_eq!(delta_days, i);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn it_computes_delta_periods_monthly() -> Result<()> {
+        let mut vesting = Vesting {
+            period_type: PeriodType::Monthly,
+            ..Default::default()
+        };
+        let cliff_ts = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
+        let mut current_ts = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
+
+        // Converting timestamps to datetimes
+        let mut current_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(current_ts.time, 0), Utc);
+
+        let cliff_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(cliff_ts.time, 0), Utc);
+
+        let mut delta_months = vesting.compute_delta_periods(current_dt, cliff_dt)?;
+
+        assert_eq!(delta_months, 0);
+
+        let mut current_month = 4;
+        let mut current_year = 2022;
+        for i in 1..=48 {
+            current_ts = TimeStamp::new_dt(Utc.ymd(current_year, current_month, 1));
+            current_dt = DateTime::from_utc(NaiveDateTime::from_timestamp(current_ts.time, 0), Utc);
+
+            delta_months = vesting.compute_delta_periods(current_dt, cliff_dt)?;
+
+            assert_eq!(delta_months, i as u64);
+
+            // Increment month and year datetime
+            current_year = if current_month == 12 {
+                current_year + 1
+            } else {
+                current_year
+            };
+            current_month = if current_month < 12 {
+                current_month + 1
+            } else {
+                1
+            };
         }
 
         Ok(())
