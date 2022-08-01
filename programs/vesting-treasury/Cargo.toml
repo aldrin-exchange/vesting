@@ -21,3 +21,7 @@ anchor-lang = "0.24.2"
 anchor-spl = "0.24.2"
 decimal = { git = "https://github.com/aldrin-exchange/solana-decimal", tag = "0.4.0" }
 chrono = { version = "0.4.19", default-features = false }
+
+[dev-dependencies]
+anchortest = { git = "https://github.com/aldrin-exchange/solana-anchortest", tag = "0.4.0" }
+solana-sdk = "*" # whatever anchor uses
