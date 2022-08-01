@@ -9,7 +9,11 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount};
 pub struct CreateVestingSchedule<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
-    #[account(zero)]
+    #[account(
+        init,
+        payer = admin,
+        space = Vesting::space()
+    )]
     pub vesting: Account<'info, Vesting>,
     /// CHECK: UNSAFE_CODES.md#signer
     #[account(
