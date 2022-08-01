@@ -262,7 +262,7 @@ impl Vesting {
     }
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(AnchorDeserialize, AnchorSerialize, Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum PeriodType {
     Daily,
     Monthly,

@@ -5,6 +5,7 @@
 //! the pro-rata amount of tokens that are vested.
 
 use crate::prelude::*;
+use std::collections::HashSet;
 
 #[derive(Accounts)]
 pub struct UpdateVestedTokens<'info> {
@@ -18,12 +19,13 @@ pub fn handle(ctx: Context<UpdateVestedTokens>) -> Result<()> {
 
     let clock_ts = accs.clock.unix_timestamp;
 
-    if accs.vesting.period_type != PeriodType::Monthly
-        || accs.vesting.period_type != PeriodType::Daily
-    {
+    let supported_types: HashSet<PeriodType> =
+        HashSet::from([PeriodType::Monthly, PeriodType::Daily]);
+
+    if !supported_types.contains(&accs.vesting.period_type) {
         return Err(error!(err::arg(
-            "The current contract version only supports\
-                 vesting schedules with daily or monthly periods"
+            "The current contract version only supports \
+            vesting schedules with daily or monthly periods"
         )));
     }
 
