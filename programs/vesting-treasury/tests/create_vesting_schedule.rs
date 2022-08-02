@@ -1,16 +1,21 @@
 use ::vesting_treasury::prelude::*;
 use ::vesting_treasury::vesting_treasury::create_vesting_schedule;
+use anchor_lang::solana_program::program;
 use anchor_lang::solana_program::system_instruction;
-use anchor_lang::system_program;
+// use anchor_lang::system_program; // this for the calls
+use anchor_lang::solana_program::system_program; // this is for the ID
 use anchor_spl::token;
 use anchortest::{
     builder::*,
     spl::{self, MintExt, TokenAccountExt},
     stub,
 };
+use bincode::deserialize;
+use bincode::serialize;
 use serial_test::serial;
 use solana_sdk::instruction::Instruction;
 use solana_sdk::sysvar::rent;
+use std::collections::BTreeMap;
 use std::str;
 use std::sync::{Arc, Mutex};
 
@@ -264,7 +269,23 @@ impl stub::ValidateCpis for CpiValidator {
                 // )
                 // .unwrap();
 
-                let expected_ix = system_instruction::create_account(
+                // ##########################################################
+
+                // let expected_ix = system_instruction::create_account(
+                //     &admin,
+                //     &Pubkey::find_program_address(
+                //         &[Vesting::VAULT_PREFIX, vesting.as_ref()],
+                //         &vesting_treasury::ID,
+                //     )
+                //     .0,
+                //     rent,
+                //     token::TokenAccount::LEN as u64,
+                //     &token::ID,
+                // );
+
+                // ##########################################################
+
+                let expected_ix = create_account_met(
                     &admin,
                     &Pubkey::find_program_address(
                         &[Vesting::VAULT_PREFIX, vesting.as_ref()],
@@ -276,11 +297,36 @@ impl stub::ValidateCpis for CpiValidator {
                     &token::ID,
                 );
 
+                // ##########################################################
+
+                // // let (_pda_address, bump) = Pubkey::find_program_address(
+                // //     &[Vesting::VAULT_PREFIX, vesting.key().as_ref()],
+                // //     &vesting_treasury::ID,
+                // // );
+                // // let bump_str = String::from_utf8(vec![bump]).unwrap();
+
+                // let mut seed = String::from_utf8(Vesting::VAULT_PREFIX.to_vec()).unwrap();
+                // let key_str = &vesting.key().to_string()[..];
+
+                // seed.push_str(&key_str);
+                // // seed.push_str(&bump_str);
+
+                // let expected_ix = create_account_with_seed_met(
+                //     &admin,
+                //     &vesting_vault,
+                //     &vesting_treasury::ID,
+                //     &seed[..],
+                //     // &str::from_utf8(Vesting::VAULT_PREFIX).unwrap(),
+                //     rent,
+                //     token::TokenAccount::LEN as u64,
+                //     &token::ID,
+                // );
                 // let expected_ix = system_instruction::create_account_with_seed(
                 //     &admin,
                 //     &vesting_vault,
-                //     &vesting,
-                //     &str::from_utf8(Vesting::VAULT_PREFIX).unwrap(),
+                //     &vesting_treasury::ID,
+                //     &seed[..],
+                //     // &str::from_utf8(Vesting::VAULT_PREFIX).unwrap(),
                 //     rent,
                 //     token::TokenAccount::LEN as u64,
                 //     &token::ID,
@@ -302,4 +348,89 @@ impl stub::ValidateCpis for CpiValidator {
             }
         }
     }
+}
+
+pub fn create_account_met(
+    from_pubkey: &Pubkey,
+    to_pubkey: &Pubkey,
+    lamports: u64,
+    space: u64,
+    owner: &Pubkey,
+) -> Instruction {
+    let account_metas = vec![
+        AccountMeta::new(*from_pubkey, true),
+        AccountMeta::new(*to_pubkey, false),
+    ];
+    Instruction::new_with_bincode(
+        system_program::id(),
+        &system_instruction::SystemInstruction::CreateAccount {
+            lamports,
+            space,
+            owner: *owner,
+        },
+        account_metas,
+    )
+}
+
+// FROM payer
+// To vesting_vault
+
+// signer seeds:
+// &[&[
+//     Vesting::VAULT_PREFIX,
+//     vesting.key().as_ref(),
+//     &[__bump][..]
+
+// anchor_lang::system_program::create_account(
+//     cpi_context.with_signer(&[&[ // FROM
+//         Vesting::VAULT_PREFIX,
+//         vesting.key().as_ref(),
+//         &[__bump][..],
+//     ][..]]),
+//     lamports,
+//     space as u64,
+//     &token_program.key(),
+// )?
+
+// we accept `to` as a parameter so that callers do their own error handling when
+//   calling create_with_seed()
+pub fn create_account_with_seed_met(
+    from_pubkey: &Pubkey,
+    to_pubkey: &Pubkey, // must match create_with_seed(base, seed, owner)
+    base: &Pubkey,
+    seed: &str,
+    lamports: u64,
+    space: u64,
+    owner: &Pubkey,
+) -> Instruction {
+    let account_metas = vec![
+        AccountMeta::new(*from_pubkey, true),
+        AccountMeta::new(*to_pubkey, false),
+    ];
+
+    let data = &system_instruction::SystemInstruction::CreateAccountWithSeed {
+        base: *base,
+        seed: seed.to_string(),
+        lamports,
+        space,
+        owner: *owner,
+    };
+
+    let data_ser = serialize(data).unwrap();
+    // let data_deser: &str = deserialize(&data_ser).unwrap();
+
+    println!("data ser= {:?}", data_ser);
+    // println!("data derser= {:?}", data_deser);
+
+    Instruction::new_with_bincode(
+        system_program::id(),
+        &system_instruction::SystemInstruction::CreateAccountWithSeed {
+            base: *base,
+            seed: seed.to_string(),
+            lamports,
+            space,
+            owner: *owner,
+        },
+        account_metas,
+    )
 }
