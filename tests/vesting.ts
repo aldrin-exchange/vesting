@@ -1,5 +1,5 @@
 import { vesting, payer, provider, airdrop } from "./helpers";
-import { Keypair, PublicKey, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   createAccount,
   createMint,
@@ -256,7 +256,6 @@ export class Vesting {
       .updateVestedTokens()
       .accounts({
         vesting: vestingKeypair.publicKey,
-        clock: SYSVAR_CLOCK_PUBKEY,
       })
       .rpc();
   }
