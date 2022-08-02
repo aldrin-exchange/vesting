@@ -14,6 +14,7 @@ use bincode::deserialize;
 use bincode::serialize;
 use serial_test::serial;
 use solana_sdk::instruction::Instruction;
+use solana_sdk::system_instruction::SystemInstruction;
 use solana_sdk::sysvar::rent;
 use std::collections::BTreeMap;
 use std::str;
@@ -110,12 +111,10 @@ impl Default for Tester {
 
         let vestee_wallet = AccountInfoWrapper::new()
             .pack(spl::token_account::new(admin.key))
-            .owner(token::ID);
+            .owner(system_program::ID);
         let token_program = AccountInfoWrapper::with_key(token::ID).program();
         let system_program = AccountInfoWrapper::with_key(system_program::ID).program();
         let rent = AccountInfoWrapper::with_key(rent::ID).program();
-
-        // println!("admin KEYYYYY::::: => {:?}", rent::ID);
 
         Self {
             admin,
@@ -143,12 +142,23 @@ impl Tester {
         self.set_syscalls(CpiValidatorState::CreateVesting {
             admin: self.admin.key,
             vesting: self.vesting.key,
-            next_cpi: CreateVault {
+            next_cpi: TransferLamps {
                 admin: self.admin.key,
-                vesting_vault: self.vesting_vault.key,
-                vesting_signer: self.vesting_signer.key,
                 vesting: self.vesting.key,
-                mint: self.mint.key,
+                next_cpi: AllocSpace {
+                    vesting: self.vesting.key,
+                    next_cpi: AssignOwn {
+                        owner: token::ID,
+                        vesting: self.vesting.key,
+                        next_cpi: CreateVault {
+                            admin: self.admin.key,
+                            vesting_vault: self.vesting_vault.key,
+                            vesting_signer: self.vesting_signer.key,
+                            vesting: self.vesting.key,
+                            mint: self.mint.key,
+                        },
+                    },
+                },
             },
         });
         let mut ctx = self.context_wrapper();
@@ -208,10 +218,33 @@ enum CpiValidatorState {
     CreateVesting {
         admin: Pubkey,
         vesting: Pubkey,
-        next_cpi: CreateVault,
+        next_cpi: TransferLamps,
     },
+    TransferLamports(TransferLamps),
+    AllocateSpace(AllocSpace),
+    AssignOwner(AssignOwn),
     CreateVestingVault(CreateVault),
     Done,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TransferLamps {
+    admin: Pubkey,
+    vesting: Pubkey,
+    next_cpi: AllocSpace,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct AllocSpace {
+    vesting: Pubkey,
+    next_cpi: AssignOwn,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct AssignOwn {
+    owner: Pubkey,
+    vesting: Pubkey,
+    next_cpi: CreateVault,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -226,6 +259,9 @@ pub struct CreateVault {
 impl stub::ValidateCpis for CpiValidator {
     fn validate_next_instruction(&mut self, ix: &Instruction, accounts: &[AccountInfo]) {
         let mut state = self.0.lock().unwrap();
+        let act_xd = ix.clone().data;
+        let act_q: SystemInstruction = bincode::deserialize(&act_xd).unwrap();
+        println!("actual DATA = {:?}", act_q);
 
         match *state {
             CpiValidatorState::CreateVesting {
@@ -243,9 +279,89 @@ impl stub::ValidateCpis for CpiValidator {
                 );
                 assert_eq!(&expected_ix, ix);
 
-                let vesting = accounts.iter().find(|acc| acc.key() == vesting).unwrap();
-                let mut lamports = vesting.lamports.borrow_mut();
+                let vesting_account = accounts.iter().find(|acc| acc.key() == vesting).unwrap();
+                let mut lamports = vesting_account.lamports.borrow_mut();
                 **lamports = rent;
+
+                *state = CpiValidatorState::TransferLamports(next_cpi.clone());
+            }
+            CpiValidatorState::TransferLamports(TransferLamps {
+                admin,
+                vesting,
+                ref next_cpi,
+            }) => {
+                let rent = Rent::default().minimum_balance(token::TokenAccount::LEN);
+
+                let expected_ix = system_instruction::transfer(
+                    &admin,
+                    &Pubkey::find_program_address(
+                        &[Vesting::VAULT_PREFIX, vesting.as_ref()],
+                        &vesting_treasury::ID,
+                    )
+                    .0,
+                    rent,
+                );
+
+                // let xd = expected_ix.clone().data;
+                // let que: SystemInstruction = bincode::deserialize(&xd).unwrap();
+                // println!("expected DATA = {:?}", que);
+
+                // let act_xd = ix.clone().data;
+                // let act_q: SystemInstruction = bincode::deserialize(&act_xd).unwrap();
+                // println!("actual DATA = {:?}", act_q);
+
+                // assert_eq!(&expected_ix, ix); // TODO: uncomment when ready
+
+                *state = CpiValidatorState::AllocateSpace(next_cpi.clone());
+            }
+            CpiValidatorState::AllocateSpace(AllocSpace {
+                vesting,
+                ref next_cpi,
+            }) => {
+                let expected_ix = system_instruction::allocate(
+                    &Pubkey::find_program_address(
+                        &[Vesting::VAULT_PREFIX, vesting.as_ref()],
+                        &vesting_treasury::ID,
+                    )
+                    .0,
+                    token::TokenAccount::LEN as u64,
+                );
+
+                let xd = expected_ix.clone().data;
+                // let que: SystemInstruction = bincode::deserialize(&xd).unwrap();
+                // println!("expected DATA = {:?}", que);
+
+                // let act_xd = ix.clone().data;
+                // let act_q: SystemInstruction = bincode::deserialize(&act_xd).unwrap();
+                // println!("actual DATA = {:?}", act_q);
+
+                assert_eq!(&expected_ix, ix);
+
+                *state = CpiValidatorState::AssignOwner(next_cpi.clone());
+            }
+            CpiValidatorState::AssignOwner(AssignOwn {
+                owner,
+                vesting,
+                ref next_cpi,
+            }) => {
+                let expected_ix = system_instruction::assign(
+                    &Pubkey::find_program_address(
+                        &[Vesting::VAULT_PREFIX, vesting.as_ref()],
+                        &vesting_treasury::ID,
+                    )
+                    .0,
+                    &owner,
+                );
+
+                // let xd = expected_ix.clone().data;
+                // let que: SystemInstruction = bincode::deserialize(&xd).unwrap();
+                // println!("expected DATA = {:?}", que);
+
+                // let act_xd = ix.clone().data;
+                // let act_q: SystemInstruction = bincode::deserialize(&act_xd).unwrap();
+                // println!("actual DATA = {:?}", act_q);
+
+                assert_eq!(&expected_ix, ix);
 
                 *state = CpiValidatorState::CreateVestingVault(next_cpi.clone());
             }
@@ -256,7 +372,8 @@ impl stub::ValidateCpis for CpiValidator {
                 vesting,
                 mint,
             }) => {
-                let rent = Rent::default().minimum_balance(Vesting::space());
+                println!("WE MADE IT HERE");
+                let rent = Rent::default().minimum_balance(token::TokenAccount::LEN);
                 // let expected_ix = token::spl_token::instruction::initialize_account(
                 //     &token::ID,
                 //     &Pubkey::find_program_address(
@@ -270,22 +387,8 @@ impl stub::ValidateCpis for CpiValidator {
                 // .unwrap();
 
                 // ##########################################################
-
-                // let expected_ix = system_instruction::create_account(
-                //     &admin,
-                //     &Pubkey::find_program_address(
-                //         &[Vesting::VAULT_PREFIX, vesting.as_ref()],
-                //         &vesting_treasury::ID,
-                //     )
-                //     .0,
-                //     rent,
-                //     token::TokenAccount::LEN as u64,
-                //     &token::ID,
-                // );
-
-                // ##########################################################
-
-                let expected_ix = create_account_met(
+                println!("We are here.");
+                let expected_ix = system_instruction::create_account(
                     &admin,
                     &Pubkey::find_program_address(
                         &[Vesting::VAULT_PREFIX, vesting.as_ref()],
@@ -296,6 +399,20 @@ impl stub::ValidateCpis for CpiValidator {
                     token::TokenAccount::LEN as u64,
                     &token::ID,
                 );
+
+                // ##########################################################
+
+                // let expected_ix = create_account_met(
+                //     &admin,
+                //     &Pubkey::find_program_address(
+                //         &[Vesting::VAULT_PREFIX, vesting.as_ref()],
+                //         &vesting_treasury::ID,
+                //     )
+                //     .0,
+                //     rent,
+                //     token::TokenAccount::LEN as u64,
+                //     &token::ID,
+                // );
 
                 // ##########################################################
 
@@ -331,6 +448,14 @@ impl stub::ValidateCpis for CpiValidator {
                 //     token::TokenAccount::LEN as u64,
                 //     &token::ID,
                 // );
+
+                let xd = expected_ix.clone().data;
+                let que: SystemInstruction = bincode::deserialize(&xd).unwrap();
+                println!("expected DATA = {:?}", que);
+
+                let act_xd = ix.clone().data;
+                let act_q: SystemInstruction = bincode::deserialize(&act_xd).unwrap();
+                println!("actual DATA = {:?}", act_q);
 
                 assert_eq!(&expected_ix, ix);
 
