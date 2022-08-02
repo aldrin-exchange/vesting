@@ -11,13 +11,16 @@ use std::collections::HashSet;
 pub struct UpdateVestedTokens<'info> {
     #[account(mut)]
     pub vesting: Account<'info, Vesting>,
-    pub clock: Sysvar<'info, Clock>,
 }
 
 pub fn handle(ctx: Context<UpdateVestedTokens>) -> Result<()> {
     let accs = ctx.accounts;
 
-    let clock_ts = accs.clock.unix_timestamp;
+    #[cfg(not(target_arch = "bpf"))]
+    panic!("This IS NOT BPF!");
+
+    let clock_ts = TimeStamp::current()?;
+    // let clock_ts = Clock::get()?.unix_timestamp;
 
     let supported_types: HashSet<PeriodType> =
         HashSet::from([PeriodType::Monthly, PeriodType::Daily]);
@@ -29,7 +32,7 @@ pub fn handle(ctx: Context<UpdateVestedTokens>) -> Result<()> {
         )));
     }
 
-    accs.vesting.update_vested_tokens(clock_ts)?;
+    accs.vesting.update_vested_tokens(clock_ts.time)?;
 
     // Since more tokens may be vested we need to update how much of
     // those vested tokens is currently unfunded
