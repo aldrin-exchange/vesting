@@ -53,6 +53,11 @@ impl TimeStamp {
 
         Self { time }
     }
+    pub fn current() -> Result<Self> {
+        Ok(Self {
+            time: Clock::get()?.unix_timestamp,
+        })
+    }
 }
 
 impl Slot {
