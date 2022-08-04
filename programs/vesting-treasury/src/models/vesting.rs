@@ -21,16 +21,18 @@ pub struct Vesting {
     pub cumulative_withdrawn: TokenAmount,
     /// Current amount sitting in the vesting vault
     pub vault_balance: TokenAmount,
-    ///The unfunded liability is the amount of vested tokens that a user
+    /// The unfunded liability is the amount of vested tokens that a user
     /// is already allowed to withdraw but are still not available in the
     /// vesting vault, therefore constituting a liability on behalf of
     /// the funder.
     pub unfunded_liability: TokenAmount,
     /// The start time in Unix Timestamp of the vesting period
     pub start_ts: TimeStamp,
-    /// The amount of periods in total in the vesting schedule
+    /// The amount of periods in total in the vesting schedule, where a period
+    /// represents a different timestamp depending on the period_type
     pub total_periods: u64,
-    /// The amount of periods in the cliff part of the schedule
+    /// The amount of periods in the cliff part of the schedule, where a period
+    /// represents a different timestamp depending on the period_type
     pub cliff_periods: u64,
     /// The type of period (i.e. Monthly, Yearly, etc.) of the vesting
     /// schedule. This is required for computing vesting schedules depending
