@@ -11,6 +11,8 @@ pub enum TreasuryError {
     /// about the issue.
     #[msg("One of the provided input arguments is invalid")]
     InvalidArg,
+    #[msg("Vesting admin does not match the provided signer")]
+    VestingAdminMismatch,
 }
 
 pub fn acc(msg: impl Display) -> TreasuryError {

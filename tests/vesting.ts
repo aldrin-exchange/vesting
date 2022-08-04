@@ -29,6 +29,13 @@ export interface InitVestingArgs {
   periodType: number;
 }
 
+export interface ChangeVesteeWalletArgs {
+  adminKeypair: Keypair;
+  vestingKeypair: Keypair;
+  vesteeWalletNew: PublicKey;
+  skipAdminSignature: boolean;
+  skipCreateVesting: boolean;
+}
 
 export class Vesting {
   public get id(): PublicKey {
@@ -186,6 +193,43 @@ export class Vesting {
       this.admin,
       amount
     );
+  }
+
+  public async changeVesteeWallet(
+    input: Partial<ChangeVesteeWalletArgs> = {},
+    ) {
+    const adminKeypair = input.adminKeypair ?? Keypair.generate();
+    await airdrop(adminKeypair.publicKey);
+
+    const vestingKeypair = input.vestingKeypair ?? this.keypair;
+    const skipAdminSignature = input.skipAdminSignature ?? false;
+    const skipCreateVesting = input.skipCreateVesting ?? false;
+
+    const vesteeWalletNew = input.vesteeWalletNew ??
+      (await (async () => {
+        const wallet = await createAccount(
+          provider.connection,
+          payer,
+          this.mint,
+          payer.publicKey
+        )
+        return wallet;
+    })());
+
+    const signers = [];
+    if (!skipAdminSignature) {
+      signers.push(adminKeypair);
+    }
+
+    await vesting.methods
+      .changeVesteeWallet()
+      .accounts({
+        admin: adminKeypair.publicKey,
+        vesting: vestingKeypair.publicKey,
+        vesteeWalletNew,
+      })
+      .signers(signers)
+      .rpc();
   }
 
 }
