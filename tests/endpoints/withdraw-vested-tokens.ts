@@ -118,7 +118,7 @@ export function test() {
       await vesting.updateVestedTokens();
       const vestingInfoBefore = await vesting.fetch();
       const vestedAmount =
-        vestingInfoBefore.cumulativeVestedAmount.amount.toNumber();
+        vestingInfoBefore.cumulativeVested.amount.toNumber();
 
       expect(vestingInfoBefore.unfundedLiability.amount.toNumber()).to.eq(
         vestedAmount
@@ -132,17 +132,17 @@ export function test() {
 
       const vestingInfoAfter = await vesting.fetch();
 
-      expect(vestingInfoAfter.cumulativeVestedAmount.amount.toNumber()).to.eq(
+      expect(vestingInfoAfter.cumulativeVested.amount.toNumber()).to.eq(
         vestedAmount
       );
       expect(vestingInfoAfter.unfundedLiability.amount.toNumber()).to.eq(10);
       expect(vestingInfoAfter.vaultBalance.amount.toNumber()).to.eq(5);
       expect(
-        vestingInfoAfter.cumulativeWithdrawnAmount.amount.toNumber()
+        vestingInfoAfter.cumulativeWithdrawn.amount.toNumber()
       ).to.eq(vestedAmount - 15);
 
       // Everything else remains with the same default values
-      expect(vestingInfoAfter.totalVestingAmount.amount.toNumber()).to.eq(
+      expect(vestingInfoAfter.totalVesting.amount.toNumber()).to.eq(
         10_000
       );
       expect(vestingInfoAfter.startTs.time.toNumber()).to.eq(1577836801);
