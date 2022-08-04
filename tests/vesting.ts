@@ -1,11 +1,13 @@
 import { vesting, payer, provider, airdrop } from "./helpers";
-import { Keypair, PublicKey, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
 import {
   createAccount,
   createMint,
+  transfer,
   mintTo,
   Account,
   getAccount,
+  getOrCreateAssociatedTokenAccount,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { BN } from "@project-serum/anchor";
@@ -233,7 +235,6 @@ export class Vesting {
         return wallet;
     })());
 
-    const preInstructions = [];
     const signers = [];
     if (!skipAdminSignature) {
       signers.push(adminKeypair);
@@ -247,7 +248,6 @@ export class Vesting {
         vesteeWalletNew,
       })
       .signers(signers)
-      .preInstructions(preInstructions)
       .rpc();
   }
 

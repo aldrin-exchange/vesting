@@ -1,6 +1,7 @@
 //! Initializes new [`Vesting`] account. After this call,
 //! the admin can fund the vesting vault such that the tokens
 //! become available to the beneficiary as they vest over time.
+
 use crate::prelude::*;
 
 use anchor_spl::token::{self, Mint, Token, TokenAccount};
@@ -45,6 +46,8 @@ pub fn handle(
     start_ts: TimeStamp,
     cliff_periods: u64,
     total_periods: u64,
+    // TODO: Add this to the documentation explaining
+    // the mapping from u32 to PeriodType Enum
     period_type: u32,
 ) -> Result<()> {
     if period_type != 1 {
