@@ -1,5 +1,5 @@
 import { vesting, payer, provider, airdrop } from "./helpers";
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
 import {
   createAccount,
   createMint,
@@ -35,6 +35,10 @@ export interface ChangeVesteeWalletArgs {
   vesteeWalletNew: PublicKey;
   skipAdminSignature: boolean;
   skipCreateVesting: boolean;
+}
+
+export interface UpdateVestedTokensArgs {
+  vestingKeypair: Keypair;
 }
 
 export class Vesting {
@@ -229,6 +233,25 @@ export class Vesting {
         vesteeWalletNew,
       })
       .signers(signers)
+      .rpc();
+  }
+
+  public async updateVestedTokens(
+    input: Partial<UpdateVestedTokensArgs> = {},
+    ) {
+    const vestingKeypair = input.vestingKeypair ?? this.keypair;
+
+    const preInstructions = [];
+    const signers = [];
+
+    await vesting.methods
+      .updateVestedTokens()
+      .accounts({
+        vesting: vestingKeypair.publicKey,
+        clock: SYSVAR_CLOCK_PUBKEY,
+      })
+      .signers(signers)
+      .preInstructions(preInstructions)
       .rpc();
   }
 
