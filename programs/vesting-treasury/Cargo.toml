@@ -1,6 +1,6 @@
 [package]
 name = "vesting-treasury"
-version = "0.2.0"
+version = "0.3.0"
 description = "Created with Anchor"
 edition = "2021"
 
@@ -20,3 +20,4 @@ no-log-ix-name = []
 anchor-lang = "0.24.2"
 anchor-spl = "0.24.2"
 decimal = { git = "https://github.com/aldrin-exchange/solana-decimal", tag = "0.4.0" }
+chrono = { version = "0.4.19", default-features = false }
