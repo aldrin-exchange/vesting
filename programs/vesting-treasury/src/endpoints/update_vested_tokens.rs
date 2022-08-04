@@ -5,7 +5,6 @@
 //! the pro-rata amount of tokens that are vested.
 
 use crate::prelude::*;
-use std::collections::HashSet;
 
 #[derive(Accounts)]
 pub struct UpdateVestedTokens<'info> {

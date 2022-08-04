@@ -38,7 +38,7 @@ pub fn handle(ctx: Context<WithdrawVestedTokens>, withdraw_amount: TokenAmount) 
     let accs = ctx.accounts;
     let signer_bump_seed = *ctx.bumps.get("vesting_signer").unwrap();
 
-    let liability = accs.vesting.get_current_liability()?;
+    let liability = accs.vesting.get_current_liability();
 
     if withdraw_amount.amount > liability {
         return Err(error!(err::arg(
@@ -75,8 +75,8 @@ pub fn handle(ctx: Context<WithdrawVestedTokens>, withdraw_amount: TokenAmount) 
     accs.vesting.vault_balance =
         TokenAmount::new(accs.vesting.vault_balance.amount - withdraw_amount.amount);
 
-    accs.vesting.cumulative_withdrawn_amount =
-        TokenAmount::new(accs.vesting.cumulative_withdrawn_amount.amount + withdraw_amount.amount);
+    accs.vesting.cumulative_withdrawn =
+        TokenAmount::new(accs.vesting.cumulative_withdrawn.amount + withdraw_amount.amount);
 
     Ok(())
 }
