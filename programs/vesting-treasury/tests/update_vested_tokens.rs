@@ -1,7 +1,10 @@
 use ::vesting_treasury::prelude::*;
 use ::vesting_treasury::vesting_treasury::update_vested_tokens;
-use anchortest::builder::*;
+use anchor_lang::solana_program::system_instruction;
+use anchortest::{builder::*, stub};
 use serial_test::serial;
+use solana_sdk::instruction::Instruction;
+use std::sync::{Arc, Mutex};
 
 #[test]
 #[serial]
@@ -15,7 +18,7 @@ fn swaps_const_prod_two_reserves_no_discount() -> Result<()> {
         ..Default::default()
     };
 
-    let mut test = Tester::new(vesting_before.clone());
+    let mut test = Tester::new(vesting_before.clone(), 500);
 
     test.update_vested_tokens()?;
 
@@ -27,6 +30,7 @@ fn swaps_const_prod_two_reserves_no_discount() -> Result<()> {
 #[derive(Clone, Debug, PartialEq)]
 struct Tester {
     vesting: AccountInfoWrapper,
+    slot: u64,
 }
 
 impl Default for Tester {
@@ -37,18 +41,18 @@ impl Default for Tester {
             .mutable()
             .size(Vesting::space());
 
-        Self { vesting }
+        Self { vesting, slot: 0 }
     }
 }
 
 impl Tester {
-    fn new(vesting_data: Vesting) -> Self {
+    fn new(vesting_data: Vesting, slot: u64) -> Self {
         let vesting = AccountInfoWrapper::new()
             .owner(vesting_treasury::ID)
             .mutable()
             .data(vesting_data.clone());
 
-        Self { vesting }
+        Self { vesting, slot }
     }
 
     fn vesting_copy(&self) -> Vesting {
@@ -67,5 +71,37 @@ impl Tester {
 
     fn context_wrapper(&mut self) -> ContextWrapper {
         ContextWrapper::new(vesting_treasury::ID).acc(&mut self.vesting)
+    }
+
+    fn set_syscalls(&self, state: CpiValidatorState) -> Arc<Mutex<CpiValidatorState>> {
+        let state = Arc::new(Mutex::new(state));
+
+        let syscalls = stub::Syscalls::new(CpiValidator(Arc::clone(&state)));
+
+        syscalls.slot(self.slot);
+        syscalls.set();
+
+        state
+    }
+}
+
+struct CpiValidator(Arc<Mutex<CpiValidatorState>>);
+#[derive(Debug, Eq, PartialEq)]
+enum CpiValidatorState {
+    UpdateVestedTokens { vesting: Pubkey },
+    Done,
+}
+
+impl stub::ValidateCpis for CpiValidator {
+    fn validate_next_instruction(&mut self, ix: &Instruction, accounts: &[AccountInfo]) {
+        let mut state = self.0.lock().unwrap();
+        match *state {
+            CpiValidatorState::UpdateVestedTokens { vesting } => {
+                *state = CpiValidatorState::Done;
+            }
+            CpiValidatorState::Done => {
+                panic!("No more instructions expected, got {:#?}", ix);
+            }
+        }
     }
 }

@@ -16,9 +16,6 @@ pub struct UpdateVestedTokens<'info> {
 pub fn handle(ctx: Context<UpdateVestedTokens>) -> Result<()> {
     let accs = ctx.accounts;
 
-    #[cfg(not(target_arch = "bpf"))]
-    panic!("This IS NOT BPF!");
-
     let clock_ts = TimeStamp::current()?;
     // let clock_ts = Clock::get()?.unix_timestamp;
 
