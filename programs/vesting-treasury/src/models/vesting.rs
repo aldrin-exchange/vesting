@@ -80,7 +80,7 @@ impl Vesting {
             + period_type
     }
 
-    /// Updates the field `cumulative_vested` in `Vesting`struct based
+    /// Updates the field `cumulative_vested` in [`Vesting`] struct based
     /// on the amount of days that have passed. The method receives the
     /// argument `clock_ts`, which stands for clock timestamp. In the endpoint
     /// `updated_vested_tokens` we call this method with `clock_ts` being the
