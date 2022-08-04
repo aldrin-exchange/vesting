@@ -19,11 +19,11 @@ pub struct CloseVestingSchedule<'info> {
 pub fn handle(ctx: Context<CloseVestingSchedule>) -> Result<()> {
     let vesting = &ctx.accounts.vesting;
 
-    if vesting.cumulative_vested_amount < vesting.total_vesting_amount {
+    if vesting.cumulative_vested < vesting.total_vesting {
         return Err(error!(err::acc("This vesting account is not fully vested")));
     }
 
-    if vesting.cumulative_vested_amount > vesting.cumulative_withdrawn_amount {
+    if vesting.cumulative_vested > vesting.cumulative_withdrawn {
         return Err(error!(err::acc(
             "This vested tokens of this vesting account are not fully withdrawn"
         )));

@@ -90,7 +90,7 @@ export function test() {
     it("fails if not fully withdrawn", async () => {
       await vesting.updateVestedTokens();
       const vestingInfo = await vesting.fetch();
-      const vestedAmount = vestingInfo.cumulativeVestedAmount.amount.toNumber();
+      const vestedAmount = vestingInfo.cumulativeVested.amount.toNumber();
 
       await vesting.fundVestingVault(
         { walletAuthority, fundingWallet },
@@ -110,7 +110,7 @@ export function test() {
     it("works", async () => {
       await vesting.updateVestedTokens();
       const vestingInfo = await vesting.fetch();
-      const vestedAmount = vestingInfo.cumulativeVestedAmount.amount.toNumber();
+      const vestedAmount = vestingInfo.cumulativeVested.amount.toNumber();
 
       await vesting.fundVestingVault(
         { walletAuthority, fundingWallet },

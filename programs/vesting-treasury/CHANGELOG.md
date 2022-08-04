@@ -6,11 +6,24 @@ The format is based on [Keep a
 Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2022-08-04
+
+### Added
+
+- Endpoint `close_vesting_schedule`
+
 ## [0.5.0] - 2022-07-29
 
 ### Added
 
 - Endpoint `withdraw_vested_tokens`
+  
+### Changed
+
+- Renamed the following fields in account struct `Vesting`:
+  - `total_vesting_amount` to `total_vesting`
+  - `cumulative_vested_amount` to `cumulative_vested`
+  - `cumulative_withdrawn_amount` to `cumulative_withdrawn`
 
 ## [0.4.0] - 2022-07-29
 
