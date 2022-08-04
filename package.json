@@ -1,4 +1,5 @@
 {
+    "license": "UNLICENSED",
     "scripts": {
         "fmt": "prettier tests/**/*.ts -w",
         "fmt-check": "prettier tests/**/*.ts --check",

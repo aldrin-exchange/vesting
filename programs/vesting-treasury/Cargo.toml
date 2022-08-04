@@ -19,3 +19,4 @@ no-log-ix-name = []
 [dependencies]
 anchor-lang = "0.24.2"
 anchor-spl = "0.24.2"
+decimal = { git = "https://github.com/aldrin-exchange/solana-decimal", tag = "0.4.0" }
