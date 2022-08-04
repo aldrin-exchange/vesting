@@ -69,7 +69,7 @@ pub fn handle(
     accs.vesting.mint = accs.mint.key();
     accs.vesting.vault = accs.vesting_vault.key();
 
-    accs.vesting.total_vesting_amount = vesting_amount;
+    accs.vesting.total_vesting = vesting_amount;
 
     accs.vesting.start_ts = start_ts;
     accs.vesting.total_periods = total_periods;
