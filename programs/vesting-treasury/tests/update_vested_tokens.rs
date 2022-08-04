@@ -1,6 +1,6 @@
 use ::vesting_treasury::prelude::*;
 use ::vesting_treasury::vesting_treasury::update_vested_tokens;
-use anchor_lang::solana_program::system_instruction;
+// use anchor_lang::solana_program::system_instruction;
 use anchortest::{builder::*, stub};
 use serial_test::serial;
 use solana_sdk::instruction::Instruction;
@@ -10,8 +10,8 @@ use std::sync::{Arc, Mutex};
 #[serial]
 fn swaps_const_prod_two_reserves_no_discount() -> Result<()> {
     let vesting_before = Vesting {
-        total_vesting_amount: TokenAmount::new(10_000),
-        cumulative_vested_amount: TokenAmount::new(0),
+        total_vesting: TokenAmount::new(10_000),
+        cumulative_vested: TokenAmount::new(0),
         start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
         total_periods: 48,
         cliff_periods: 12,
