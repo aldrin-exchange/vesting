@@ -5,6 +5,7 @@ import * as changeVestingWallet from "./endpoints/change-vestee-wallet";
 import * as updateVestedTokens from "./endpoints/update-vested-tokens";
 import * as fundVestingVault from "./endpoints/fund-vesting-vault";
 import * as withdrawVestedTokens from "./endpoints/withdraw-vested-tokens";
+import * as closeVestingSchedule from "./endpoints/close-vesting-schedule";
 
 import { airdrop, provider } from "./helpers";
 
@@ -14,6 +15,7 @@ describe("vesting-treasury", () => {
     updateVestedTokens.test();
     fundVestingVault.test();
     withdrawVestedTokens.test();
+    closeVestingSchedule.test();
 
 
   before("airdrop SOL to provider wallet", async () => {
