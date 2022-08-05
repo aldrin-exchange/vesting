@@ -52,4 +52,8 @@ pub mod vesting_treasury {
     ) -> Result<()> {
         endpoints::withdraw_vested_tokens::handle(ctx, withdraw_amount)
     }
+
+    pub fn close_vesting_schedule(ctx: Context<CloseVestingSchedule>) -> Result<()> {
+        endpoints::close_vesting_schedule::handle(ctx)
+    }
 }
