@@ -14,23 +14,25 @@ pub struct Vesting {
     /// Address of the account's token vault.
     pub vault: Pubkey,
     /// The total amount that will vest over time
-    pub total_vesting_amount: TokenAmount,
+    pub total_vesting: TokenAmount,
     /// Cumulative amount that vested thus far
-    pub cumulative_vested_amount: TokenAmount,
+    pub cumulative_vested: TokenAmount,
     /// Cumulative amount withdrawn thus far
-    pub cumulative_withdrawn_amount: TokenAmount,
+    pub cumulative_withdrawn: TokenAmount,
     /// Current amount sitting in the vesting vault
     pub vault_balance: TokenAmount,
-    ///The unfunded liability is the amount of vested tokens that a user
+    /// The unfunded liability is the amount of vested tokens that a user
     /// is already allowed to withdraw but are still not available in the
     /// vesting vault, therefore constituting a liability on behalf of
     /// the funder.
     pub unfunded_liability: TokenAmount,
     /// The start time in Unix Timestamp of the vesting period
     pub start_ts: TimeStamp,
-    /// The amount of periods in total in the vesting schedule
+    /// The amount of periods in total in the vesting schedule, where a period
+    /// represents a different timestamp depending on the period_type
     pub total_periods: u64,
-    /// The amount of periods in the cliff part of the schedule
+    /// The amount of periods in the cliff part of the schedule, where a period
+    /// represents a different timestamp depending on the period_type
     pub cliff_periods: u64,
     /// The type of period (i.e. Monthly, Yearly, etc.) of the vesting
     /// schedule. This is required for computing vesting schedules depending
@@ -49,9 +51,9 @@ impl Vesting {
         let mint = 32;
         let vault = 32;
 
-        let total_vesting_amount = mem::size_of::<TokenAmount>();
-        let cumulative_vested_amount = mem::size_of::<TokenAmount>();
-        let cumulative_withdrawn_amount = mem::size_of::<TokenAmount>();
+        let total_vesting = mem::size_of::<TokenAmount>();
+        let cumulative_vested = mem::size_of::<TokenAmount>();
+        let cumulative_withdrawn = mem::size_of::<TokenAmount>();
         let vesting_vault_balance = mem::size_of::<TokenAmount>();
         let unfunded_liabilities = mem::size_of::<TokenAmount>();
 
@@ -67,9 +69,9 @@ impl Vesting {
             + mint
             + vault
             + mint
-            + total_vesting_amount
-            + cumulative_vested_amount
-            + cumulative_withdrawn_amount
+            + total_vesting
+            + cumulative_vested
+            + cumulative_withdrawn
             + vesting_vault_balance
             + unfunded_liabilities
             + start_ts
@@ -78,7 +80,7 @@ impl Vesting {
             + period_type
     }
 
-    /// Updates the field `cumulative_vested_amount` in [`Vesting`] struct based
+    /// Updates the field `cumulative_vested` in [`Vesting`] struct based
     /// on the amount of days that have passed. The method receives the
     /// argument `clock_ts`, which stands for clock timestamp. In the endpoint
     /// `updated_vested_tokens` we call this method with `clock_ts` being the
@@ -115,7 +117,7 @@ impl Vesting {
 
         if current_dt >= end_dt {
             // This means the schedule is fully vested
-            self.cumulative_vested_amount = self.total_vesting_amount;
+            self.cumulative_vested = self.total_vesting;
             return Ok(());
         }
 
@@ -156,10 +158,10 @@ impl Vesting {
         let cumulative_vested = Decimal::from(self.cliff_periods)
             .try_add(Decimal::from(delta_periods as u64))?
             .try_div(Decimal::from(self.total_periods))?
-            .try_mul(Decimal::from(self.total_vesting_amount))?
+            .try_mul(Decimal::from(self.total_vesting))?
             .try_floor()?;
 
-        self.cumulative_vested_amount = TokenAmount::new(cumulative_vested);
+        self.cumulative_vested = TokenAmount::new(cumulative_vested);
 
         Ok(())
     }
@@ -175,8 +177,8 @@ impl Vesting {
     /// vault balance to determine if there is any unfunded amount.
     pub fn update_unfunded_liability(&mut self) -> Result<()> {
         // Cum withdrawn can never be bigger than cum vested by design
-        let liability = Decimal::from(self.cumulative_vested_amount)
-            .try_sub(Decimal::from(self.cumulative_withdrawn_amount))?
+        let liability = Decimal::from(self.cumulative_vested)
+            .try_sub(Decimal::from(self.cumulative_withdrawn))?
             .try_round()?;
 
         if self.vault_balance.amount >= liability {
@@ -188,6 +190,10 @@ impl Vesting {
         self.unfunded_liability = TokenAmount::new(unfunded_liability);
 
         Ok(())
+    }
+
+    pub fn get_current_liability(&mut self) -> u64 {
+        self.cumulative_vested.amount - self.cumulative_withdrawn.amount
     }
 }
 
@@ -291,8 +297,8 @@ mod tests {
         let clock = TimeStamp::new_dt(Utc.ymd(2021, 6, 14));
 
         let mut vesting = Vesting {
-            total_vesting_amount: TokenAmount::new(10_000),
-            cumulative_vested_amount: TokenAmount::new(0),
+            total_vesting: TokenAmount::new(10_000),
+            cumulative_vested: TokenAmount::new(0),
             start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
             total_periods: 48,
             cliff_periods: 12,
@@ -302,8 +308,8 @@ mod tests {
         vesting.update_vested_tokens(clock.time)?;
 
         // Check that nothing has changed
-        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(0));
-        assert_eq!(vesting.total_vesting_amount, TokenAmount::new(10_000));
+        assert_eq!(vesting.cumulative_vested, TokenAmount::new(0));
+        assert_eq!(vesting.total_vesting, TokenAmount::new(10_000));
         assert_eq!(vesting.cliff_periods, 12);
         assert_eq!(vesting.total_periods, 48);
         assert_eq!(vesting.start_ts, TimeStamp::new_dt(Utc.ymd(2020, 6, 15)));
@@ -316,8 +322,8 @@ mod tests {
         let clock = TimeStamp::new_dt(Utc.ymd(2021, 6, 15));
 
         let mut vesting = Vesting {
-            total_vesting_amount: TokenAmount::new(10_000),
-            cumulative_vested_amount: TokenAmount::new(0),
+            total_vesting: TokenAmount::new(10_000),
+            cumulative_vested: TokenAmount::new(0),
             start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
             total_periods: 48,
             cliff_periods: 12,
@@ -327,10 +333,10 @@ mod tests {
         vesting.update_vested_tokens(clock.time)?;
 
         // Check that cumulative vested amount is correct
-        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(2_500));
+        assert_eq!(vesting.cumulative_vested, TokenAmount::new(2_500));
 
         // Check that nothing else has changed
-        assert_eq!(vesting.total_vesting_amount, TokenAmount::new(10_000));
+        assert_eq!(vesting.total_vesting, TokenAmount::new(10_000));
         assert_eq!(vesting.cliff_periods, 12);
         assert_eq!(vesting.total_periods, 48);
         assert_eq!(vesting.start_ts, TimeStamp::new_dt(Utc.ymd(2020, 6, 15)));
@@ -343,8 +349,8 @@ mod tests {
         let clock = TimeStamp::new_dt(Utc.ymd(2020, 7, 15));
 
         let mut vesting = Vesting {
-            total_vesting_amount: TokenAmount::new(10_000),
-            cumulative_vested_amount: TokenAmount::new(0),
+            total_vesting: TokenAmount::new(10_000),
+            cumulative_vested: TokenAmount::new(0),
             start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
             total_periods: 48,
             cliff_periods: 0,
@@ -354,7 +360,7 @@ mod tests {
         vesting.update_vested_tokens(clock.time)?;
 
         // Check that cumulative vested amount is correct
-        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(208));
+        assert_eq!(vesting.cumulative_vested, TokenAmount::new(208));
 
         Ok(())
     }
@@ -364,8 +370,8 @@ mod tests {
         let clock = TimeStamp::new_dt(Utc.ymd(2022, 6, 15));
 
         let mut vesting = Vesting {
-            total_vesting_amount: TokenAmount::new(10_000),
-            cumulative_vested_amount: TokenAmount::new(0),
+            total_vesting: TokenAmount::new(10_000),
+            cumulative_vested: TokenAmount::new(0),
             start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
             total_periods: 48,
             cliff_periods: 12,
@@ -375,10 +381,10 @@ mod tests {
         vesting.update_vested_tokens(clock.time)?;
 
         // Check that cumulative vested amount is correct
-        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(5_000));
+        assert_eq!(vesting.cumulative_vested, TokenAmount::new(5_000));
 
         // Check that nothing else has changed
-        assert_eq!(vesting.total_vesting_amount, TokenAmount::new(10_000));
+        assert_eq!(vesting.total_vesting, TokenAmount::new(10_000));
         assert_eq!(vesting.cliff_periods, 12);
         assert_eq!(vesting.total_periods, 48);
         assert_eq!(vesting.start_ts, TimeStamp::new_dt(Utc.ymd(2020, 6, 15)));
@@ -391,8 +397,8 @@ mod tests {
         let mut clock = TimeStamp::new_dt(Utc.ymd(2021, 6, 14));
 
         let mut vesting = Vesting {
-            total_vesting_amount: TokenAmount::new(10_000),
-            cumulative_vested_amount: TokenAmount::new(0),
+            total_vesting: TokenAmount::new(10_000),
+            cumulative_vested: TokenAmount::new(0),
             start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
             total_periods: 12,
             cliff_periods: 12,
@@ -401,15 +407,15 @@ mod tests {
 
         vesting.update_vested_tokens(clock.time)?;
         // Check that cumulative vested amount is correct
-        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(0));
+        assert_eq!(vesting.cumulative_vested, TokenAmount::new(0));
 
         clock = TimeStamp::new_dt(Utc.ymd(2021, 6, 15));
         vesting.update_vested_tokens(clock.time)?;
         // Check that cumulative vested amount is correct
-        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(10_000));
+        assert_eq!(vesting.cumulative_vested, TokenAmount::new(10_000));
 
         // Check that nothing else has changed
-        assert_eq!(vesting.total_vesting_amount, TokenAmount::new(10_000));
+        assert_eq!(vesting.total_vesting, TokenAmount::new(10_000));
         assert_eq!(vesting.cliff_periods, 12);
         assert_eq!(vesting.total_periods, 12);
         assert_eq!(vesting.start_ts, TimeStamp::new_dt(Utc.ymd(2020, 6, 15)));
@@ -422,8 +428,8 @@ mod tests {
         let clock = TimeStamp::new_dt(Utc.ymd(2024, 6, 15));
 
         let mut vesting = Vesting {
-            total_vesting_amount: TokenAmount::new(10_000),
-            cumulative_vested_amount: TokenAmount::new(0),
+            total_vesting: TokenAmount::new(10_000),
+            cumulative_vested: TokenAmount::new(0),
             start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
             total_periods: 48,
             cliff_periods: 12,
@@ -431,11 +437,11 @@ mod tests {
         };
 
         vesting.update_vested_tokens(clock.time)?;
-        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(10_000));
+        assert_eq!(vesting.cumulative_vested, TokenAmount::new(10_000));
 
         let clock = TimeStamp::new_dt(Utc.ymd(2030, 6, 15));
         vesting.update_vested_tokens(clock.time)?;
-        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(10_000));
+        assert_eq!(vesting.cumulative_vested, TokenAmount::new(10_000));
 
         Ok(())
     }
@@ -443,8 +449,8 @@ mod tests {
     #[test]
     fn it_updates_vested_tokens() -> Result<()> {
         let mut vesting = Vesting {
-            total_vesting_amount: TokenAmount::new(10_000),
-            cumulative_vested_amount: TokenAmount::new(0),
+            total_vesting: TokenAmount::new(10_000),
+            cumulative_vested: TokenAmount::new(0),
             start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
             total_periods: 48,
             cliff_periods: 12,
@@ -461,10 +467,7 @@ mod tests {
             // Check that cumulative vested amount is correct
             let vested_tokens = if i <= 11 { 0 } else { i * 10_000 / 48 };
 
-            assert_eq!(
-                vesting.cumulative_vested_amount,
-                TokenAmount::new(vested_tokens)
-            );
+            assert_eq!(vesting.cumulative_vested, TokenAmount::new(vested_tokens));
 
             // Increment month and year datetime
             current_year = if current_month == 12 {
@@ -486,8 +489,8 @@ mod tests {
         let clock = TimeStamp::new_dt(Utc.ymd(2022, 2, 28));
 
         let mut vesting = Vesting {
-            total_vesting_amount: TokenAmount::new(10_000),
-            cumulative_vested_amount: TokenAmount::new(0),
+            total_vesting: TokenAmount::new(10_000),
+            cumulative_vested: TokenAmount::new(0),
             start_ts: TimeStamp::new_dt(Utc.ymd(2022, 1, 31)),
             total_periods: 48,
             cliff_periods: 0,
@@ -497,19 +500,19 @@ mod tests {
         vesting.update_vested_tokens(clock.time)?;
 
         // Check that cumulative vested amount is correct
-        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(0));
+        assert_eq!(vesting.cumulative_vested, TokenAmount::new(0));
 
         let clock = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
         vesting.update_vested_tokens(clock.time)?;
-        assert_eq!(vesting.cumulative_vested_amount, TokenAmount::new(208));
+        assert_eq!(vesting.cumulative_vested, TokenAmount::new(208));
         Ok(())
     }
 
     #[test]
     fn it_updates_unfunded_liabilities_when_positive() -> Result<()> {
         let mut vesting = Vesting {
-            cumulative_vested_amount: TokenAmount::new(5_000),
-            cumulative_withdrawn_amount: TokenAmount::new(2500),
+            cumulative_vested: TokenAmount::new(5_000),
+            cumulative_withdrawn: TokenAmount::new(2500),
             vault_balance: TokenAmount::new(500),
             ..Default::default()
         };
@@ -525,8 +528,8 @@ mod tests {
     #[test]
     fn it_does_not_update_unfunded_liabilities_when_none() -> Result<()> {
         let mut vesting = Vesting {
-            cumulative_vested_amount: TokenAmount::new(5_000),
-            cumulative_withdrawn_amount: TokenAmount::new(5_000),
+            cumulative_vested: TokenAmount::new(5_000),
+            cumulative_withdrawn: TokenAmount::new(5_000),
             vault_balance: TokenAmount::new(0),
             ..Default::default()
         };
@@ -541,8 +544,8 @@ mod tests {
     #[test]
     fn it_does_not_update_unfunded_liabilities_when_overfunded() -> Result<()> {
         let mut vesting = Vesting {
-            cumulative_vested_amount: TokenAmount::new(5_000),
-            cumulative_withdrawn_amount: TokenAmount::new(0),
+            cumulative_vested: TokenAmount::new(5_000),
+            cumulative_withdrawn: TokenAmount::new(0),
             vault_balance: TokenAmount::new(10_000),
             ..Default::default()
         };

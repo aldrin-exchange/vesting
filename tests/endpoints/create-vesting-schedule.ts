@@ -103,7 +103,7 @@ export function test() {
       const vestingInfo = await vesting.fetch();
 
       // These are the default amounts in the init method
-      expect(vestingInfo.totalVestingAmount.amount.toNumber()).to.eq(10_000);
+      expect(vestingInfo.totalVesting.amount.toNumber()).to.eq(10_000);
       expect(vestingInfo.startTs.time.toNumber()).to.eq(1577836801);
       expect(vestingInfo.cliffPeriods.toNumber()).to.eq(12);
       expect(vestingInfo.totalPeriods.toNumber()).to.eq(48);
@@ -114,8 +114,8 @@ export function test() {
       expect(vestingInfo.vesteeWallet).to.deep.eq(vesteeWallet);
       expect(vestingInfo.mint).to.deep.eq(vestingMint);
       expect(vestingInfo.vault).to.deep.eq(await vesting.vestingVault());
-      expect(vestingInfo.cumulativeVestedAmount.amount.toNumber()).to.eq(0);
-      expect(vestingInfo.cumulativeWithdrawnAmount.amount.toNumber()).to.eq(0);
+      expect(vestingInfo.cumulativeVested.amount.toNumber()).to.eq(0);
+      expect(vestingInfo.cumulativeWithdrawn.amount.toNumber()).to.eq(0);
       expect(vestingInfo.vaultBalance.amount.toNumber()).to.eq(0);
       expect(vestingInfo.unfundedLiability.amount.toNumber()).to.eq(0);
     });

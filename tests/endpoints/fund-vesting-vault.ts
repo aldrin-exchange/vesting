@@ -129,9 +129,7 @@ export function test() {
       expect(vestingInfoAfter2.vaultBalance.amount.toNumber()).to.eq(7_000);
 
       // Everything else remains with the same default values
-      expect(vestingInfoAfter2.totalVestingAmount.amount.toNumber()).to.eq(
-        10_000
-      );
+      expect(vestingInfoAfter2.totalVesting.amount.toNumber()).to.eq(10_000);
       expect(vestingInfoAfter2.startTs.time.toNumber()).to.eq(1577836801);
       expect(vestingInfoAfter2.cliffPeriods.toNumber()).to.eq(12);
       expect(vestingInfoAfter2.totalPeriods.toNumber()).to.eq(48);
@@ -139,9 +137,7 @@ export function test() {
       expect(vestingInfoAfter2.admin).to.deep.eq(adminKeypair.publicKey);
       expect(vestingInfoAfter2.mint).to.deep.eq(vestingMint);
       expect(vestingInfoAfter2.vault).to.deep.eq(await vesting.vestingVault());
-      expect(
-        vestingInfoAfter2.cumulativeWithdrawnAmount.amount.toNumber()
-      ).to.eq(0);
+      expect(vestingInfoAfter2.cumulativeWithdrawn.amount.toNumber()).to.eq(0);
       expect(vestingInfoAfter2.unfundedLiability.amount.toNumber()).to.eq(0);
     });
   });
