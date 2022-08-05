@@ -1,5 +1,6 @@
 use ::vesting_treasury::prelude::*;
 use ::vesting_treasury::vesting_treasury::update_vested_tokens;
+use anchor_lang::prelude::Clock;
 // use anchor_lang::solana_program::system_instruction;
 use anchortest::{builder::*, stub};
 use serial_test::serial;
@@ -77,7 +78,15 @@ impl Tester {
         let state = Arc::new(Mutex::new(state));
 
         let syscalls = stub::Syscalls::new(CpiValidator(Arc::clone(&state)));
+        let clock = Clock {
+            slot: 10,
+            epoch_start_timestamp: 10,
+            epoch: 10,
+            leader_schedule_epoch: 10,
+            unix_timestamp: 10,
+        };
 
+        syscalls.clock()
         syscalls.slot(self.slot);
         syscalls.set();
 
