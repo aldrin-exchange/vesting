@@ -1,6 +1,7 @@
 pub mod endpoints;
 pub mod err;
 pub mod models;
+pub mod periods;
 pub mod prelude;
 pub mod time;
 

@@ -1,6 +1,7 @@
 //! If the [`Vesting`] is fully vested and has no tokens that remain to be
 //! withdrawn, then the account is empty and can be closed without losing
 //! funds.
+
 use crate::prelude::*;
 
 #[derive(Accounts)]

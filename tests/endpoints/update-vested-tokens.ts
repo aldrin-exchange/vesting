@@ -47,19 +47,13 @@ export function test() {
 
       // Check that the cumulativeVestedAmount and unfunded liability
       // changes state
-      expect(vestingInfoBefore.cumulativeVested.amount.toNumber()).to.eq(
-        0
-      );
-      expect(
-        vestingInfoAfter.cumulativeVested.amount.toNumber()
-      ).to.above(0);
+      expect(vestingInfoBefore.cumulativeVested.amount.toNumber()).to.eq(0);
+      expect(vestingInfoAfter.cumulativeVested.amount.toNumber()).to.above(0);
       expect(vestingInfoBefore.unfundedLiability.amount.toNumber()).to.eq(0);
       expect(vestingInfoAfter.unfundedLiability.amount.toNumber()).to.above(0);
 
       // Everything else remains with the same default values
-      expect(vestingInfoAfter.totalVesting.amount.toNumber()).to.eq(
-        10_000
-      );
+      expect(vestingInfoAfter.totalVesting.amount.toNumber()).to.eq(10_000);
       expect(vestingInfoAfter.startTs.time.toNumber()).to.eq(1577836801);
       expect(vestingInfoAfter.cliffPeriods.toNumber()).to.eq(12);
       expect(vestingInfoAfter.totalPeriods.toNumber()).to.eq(48);
@@ -67,9 +61,7 @@ export function test() {
       expect(vestingInfoAfter.admin).to.deep.eq(adminKeypair.publicKey);
       expect(vestingInfoAfter.mint).to.deep.eq(vestingMint);
       expect(vestingInfoAfter.vault).to.deep.eq(await vesting.vestingVault());
-      expect(
-        vestingInfoAfter.cumulativeWithdrawn.amount.toNumber()
-      ).to.eq(0);
+      expect(vestingInfoAfter.cumulativeWithdrawn.amount.toNumber()).to.eq(0);
       expect(vestingInfoAfter.vaultBalance.amount.toNumber()).to.eq(0);
     });
   });
