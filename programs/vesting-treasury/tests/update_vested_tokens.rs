@@ -1,9 +1,9 @@
 use ::vesting_treasury::prelude::*;
 use ::vesting_treasury::vesting_treasury::update_vested_tokens;
 use anchor_lang::prelude::Clock;
-// use anchor_lang::solana_program::system_instruction;
 use anchortest::{builder::*, stub};
 use serial_test::serial;
+use solana_sdk::clock::{Epoch, UnixTimestamp};
 use solana_sdk::instruction::Instruction;
 use std::sync::{Arc, Mutex};
 
@@ -61,6 +61,9 @@ impl Tester {
     }
 
     fn update_vested_tokens(&mut self) -> Result<()> {
+        self.set_syscalls(CpiValidatorState::UpdateVestedTokens {
+            vesting: self.vesting.key,
+        });
         let mut ctx = self.context_wrapper();
         let mut accounts = ctx.accounts()?;
 
@@ -80,14 +83,13 @@ impl Tester {
         let syscalls = stub::Syscalls::new(CpiValidator(Arc::clone(&state)));
         let clock = Clock {
             slot: 10,
-            epoch_start_timestamp: 10,
-            epoch: 10,
-            leader_schedule_epoch: 10,
-            unix_timestamp: 10,
+            epoch_start_timestamp: 1640995201 as UnixTimestamp, // 2022/01/01 00:00:01
+            epoch: 10 as Epoch,
+            leader_schedule_epoch: 10 as Epoch,
+            unix_timestamp: 1640995201 as UnixTimestamp,
         };
 
-        syscalls.clock()
-        syscalls.slot(self.slot);
+        syscalls.clock(clock);
         syscalls.set();
 
         state
