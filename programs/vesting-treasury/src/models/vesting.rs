@@ -4,6 +4,9 @@ use std::mem;
 
 use crate::periods::monthly;
 
+// TODO: Mention in documentation how PeriodType works, and how it influences
+// the interpretation of period fields
+
 #[derive(Default, Debug)]
 #[account]
 pub struct Vesting {
