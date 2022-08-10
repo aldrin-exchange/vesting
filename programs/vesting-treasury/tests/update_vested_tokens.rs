@@ -9,11 +9,11 @@ use std::sync::{Arc, Mutex};
 
 #[test]
 #[serial]
-fn swaps_const_prod_two_reserves_no_discount() -> Result<()> {
+fn update_monthly_vested_tokens() -> Result<()> {
     let vesting_before = Vesting {
         total_vesting: TokenAmount::new(10_000),
         cumulative_vested: TokenAmount::new(0),
-        start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 15)),
+        start_ts: TimeStamp::new_dt(Utc.ymd(2020, 1, 1)),
         total_periods: 48,
         cliff_periods: 12,
         ..Default::default()
@@ -21,12 +21,109 @@ fn swaps_const_prod_two_reserves_no_discount() -> Result<()> {
 
     let mut test = Tester::new(vesting_before.clone(), 500);
 
-    test.update_vested_tokens()?;
+    let mut current_clock = TimeStamp::new_dt(Utc.ymd(2020, 1, 1));
+    test.update_vested_tokens(current_clock.time)?;
+    let mut vesting_after = test.vesting_copy();
 
-    let _vesting_after = test.vesting_copy();
+    assert_eq!(vesting_after.cumulative_vested.amount, 0);
+    assert_eq!(vesting_after.unfunded_liability.amount, 0);
+
+    current_clock = TimeStamp::new_dt(Utc.ymd(2021, 1, 1));
+    test.update_vested_tokens(current_clock.time)?;
+    vesting_after = test.vesting_copy();
+
+    assert_eq!(vesting_after.cumulative_vested.amount, 2_500);
+    assert_eq!(vesting_after.unfunded_liability.amount, 2_500);
+
+    current_clock = TimeStamp::new_dt(Utc.ymd(2022, 1, 1));
+    test.update_vested_tokens(current_clock.time)?;
+    vesting_after = test.vesting_copy();
+
+    assert_eq!(vesting_after.cumulative_vested.amount, 5_000);
+    assert_eq!(vesting_after.unfunded_liability.amount, 5_000);
+
+    current_clock = TimeStamp::new_dt(Utc.ymd(2023, 1, 1));
+    test.update_vested_tokens(current_clock.time)?;
+    vesting_after = test.vesting_copy();
+
+    assert_eq!(vesting_after.cumulative_vested.amount, 7_500);
+    assert_eq!(vesting_after.unfunded_liability.amount, 7_500);
+
+    current_clock = TimeStamp::new_dt(Utc.ymd(2024, 1, 1));
+    test.update_vested_tokens(current_clock.time)?;
+    vesting_after = test.vesting_copy();
+
+    assert_eq!(vesting_after.cumulative_vested.amount, 10_000);
+    assert_eq!(vesting_after.unfunded_liability.amount, 10_000);
+
+    current_clock = TimeStamp::new_dt(Utc.ymd(2050, 1, 1));
+    test.update_vested_tokens(current_clock.time)?;
+    vesting_after = test.vesting_copy();
+
+    assert_eq!(vesting_after.cumulative_vested.amount, 10_000);
+    assert_eq!(vesting_after.unfunded_liability.amount, 10_000);
 
     Ok(())
 }
+
+// #[test]
+// #[serial]
+// fn update_daily_vested_tokens() -> Result<()> {
+//     let vesting_before = Vesting {
+//         total_vesting: TokenAmount::new(10_000),
+//         cumulative_vested: TokenAmount::new(0),
+//         start_ts: TimeStamp::new_dt(Utc.ymd(2020, 1, 1)),
+//         total_periods: 48,
+//         cliff_periods: 12,
+//         ..Default::default()
+//     };
+
+//     let mut test = Tester::new(vesting_before.clone(), 500);
+
+//     let mut current_clock = TimeStamp::new_dt(Utc.ymd(2020, 1, 1));
+//     test.update_vested_tokens(current_clock.time)?;
+//     let mut vesting_after = test.vesting_copy();
+
+//     assert_eq!(vesting_after.cumulative_vested.amount, 0);
+//     assert_eq!(vesting_after.unfunded_liability.amount, 0);
+
+//     current_clock = TimeStamp::new_dt(Utc.ymd(2021, 1, 1));
+//     test.update_vested_tokens(current_clock.time)?;
+//     vesting_after = test.vesting_copy();
+
+//     assert_eq!(vesting_after.cumulative_vested.amount, 2_500);
+//     assert_eq!(vesting_after.unfunded_liability.amount, 2_500);
+
+//     current_clock = TimeStamp::new_dt(Utc.ymd(2022, 1, 1));
+//     test.update_vested_tokens(current_clock.time)?;
+//     vesting_after = test.vesting_copy();
+
+//     assert_eq!(vesting_after.cumulative_vested.amount, 5_000);
+//     assert_eq!(vesting_after.unfunded_liability.amount, 5_000);
+
+//     current_clock = TimeStamp::new_dt(Utc.ymd(2023, 1, 1));
+//     test.update_vested_tokens(current_clock.time)?;
+//     vesting_after = test.vesting_copy();
+
+//     assert_eq!(vesting_after.cumulative_vested.amount, 7_500);
+//     assert_eq!(vesting_after.unfunded_liability.amount, 7_500);
+
+//     current_clock = TimeStamp::new_dt(Utc.ymd(2024, 1, 1));
+//     test.update_vested_tokens(current_clock.time)?;
+//     vesting_after = test.vesting_copy();
+
+//     assert_eq!(vesting_after.cumulative_vested.amount, 10_000);
+//     assert_eq!(vesting_after.unfunded_liability.amount, 10_000);
+
+//     current_clock = TimeStamp::new_dt(Utc.ymd(2050, 1, 1));
+//     test.update_vested_tokens(current_clock.time)?;
+//     vesting_after = test.vesting_copy();
+
+//     assert_eq!(vesting_after.cumulative_vested.amount, 10_000);
+//     assert_eq!(vesting_after.unfunded_liability.amount, 10_000);
+
+//     Ok(())
+// }
 
 #[derive(Clone, Debug, PartialEq)]
 struct Tester {
@@ -60,10 +157,13 @@ impl Tester {
         Vesting::try_deserialize(&mut self.vesting.data.as_slice()).unwrap()
     }
 
-    fn update_vested_tokens(&mut self) -> Result<()> {
-        self.set_syscalls(CpiValidatorState::UpdateVestedTokens {
-            vesting: self.vesting.key,
-        });
+    fn update_vested_tokens(&mut self, current_ts: i64) -> Result<()> {
+        self.set_syscalls(
+            CpiValidatorState::UpdateVestedTokens {
+                vesting: self.vesting.key,
+            },
+            current_ts,
+        );
         let mut ctx = self.context_wrapper();
         let mut accounts = ctx.accounts()?;
 
@@ -77,16 +177,16 @@ impl Tester {
         ContextWrapper::new(vesting_treasury::ID).acc(&mut self.vesting)
     }
 
-    fn set_syscalls(&self, state: CpiValidatorState) -> Arc<Mutex<CpiValidatorState>> {
+    fn set_syscalls(&self, state: CpiValidatorState, clock: i64) -> Arc<Mutex<CpiValidatorState>> {
         let state = Arc::new(Mutex::new(state));
 
         let syscalls = stub::Syscalls::new(CpiValidator(Arc::clone(&state)));
         let clock = Clock {
             slot: 10,
-            epoch_start_timestamp: 1640995201 as UnixTimestamp, // 2022/01/01 00:00:01
+            epoch_start_timestamp: clock as UnixTimestamp,
             epoch: 10 as Epoch,
             leader_schedule_epoch: 10 as Epoch,
-            unix_timestamp: 1640995201 as UnixTimestamp,
+            unix_timestamp: clock as UnixTimestamp,
         };
 
         syscalls.clock(clock);
