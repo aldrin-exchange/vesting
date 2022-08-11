@@ -66,64 +66,58 @@ fn update_monthly_vested_tokens() -> Result<()> {
     Ok(())
 }
 
-// #[test]
-// #[serial]
-// fn update_daily_vested_tokens() -> Result<()> {
-//     let vesting_before = Vesting {
-//         total_vesting: TokenAmount::new(10_000),
-//         cumulative_vested: TokenAmount::new(0),
-//         start_ts: TimeStamp::new_dt(Utc.ymd(2020, 1, 1)),
-//         total_periods: 48,
-//         cliff_periods: 12,
-//         ..Default::default()
-//     };
+#[test]
+#[serial]
+fn update_daily_vested_tokens() -> Result<()> {
+    let vesting_before = Vesting {
+        total_vesting: TokenAmount::new(10_000),
+        cumulative_vested: TokenAmount::new(0),
+        start_ts: TimeStamp::new_dt(Utc.ymd(2020, 1, 1)),
+        total_periods: 20,
+        cliff_periods: 5,
+        period_type: PeriodType::Daily,
+        ..Default::default()
+    };
 
-//     let mut test = Tester::new(vesting_before.clone(), 500);
+    let mut test = Tester::new(vesting_before.clone(), 500);
 
-//     let mut current_clock = TimeStamp::new_dt(Utc.ymd(2020, 1, 1));
-//     test.update_vested_tokens(current_clock.time)?;
-//     let mut vesting_after = test.vesting_copy();
+    let mut current_clock = TimeStamp::new_dt(Utc.ymd(2020, 1, 1));
+    test.update_vested_tokens(current_clock.time)?;
+    let mut vesting_after = test.vesting_copy();
 
-//     assert_eq!(vesting_after.cumulative_vested.amount, 0);
-//     assert_eq!(vesting_after.unfunded_liability.amount, 0);
+    assert_eq!(vesting_after.cumulative_vested.amount, 0);
+    assert_eq!(vesting_after.unfunded_liability.amount, 0);
 
-//     current_clock = TimeStamp::new_dt(Utc.ymd(2021, 1, 1));
-//     test.update_vested_tokens(current_clock.time)?;
-//     vesting_after = test.vesting_copy();
+    current_clock = TimeStamp::new_dt(Utc.ymd(2020, 1, 6));
+    test.update_vested_tokens(current_clock.time)?;
+    vesting_after = test.vesting_copy();
 
-//     assert_eq!(vesting_after.cumulative_vested.amount, 2_500);
-//     assert_eq!(vesting_after.unfunded_liability.amount, 2_500);
+    assert_eq!(vesting_after.cumulative_vested.amount, 2_500);
+    assert_eq!(vesting_after.unfunded_liability.amount, 2_500);
 
-//     current_clock = TimeStamp::new_dt(Utc.ymd(2022, 1, 1));
-//     test.update_vested_tokens(current_clock.time)?;
-//     vesting_after = test.vesting_copy();
+    current_clock = TimeStamp::new_dt(Utc.ymd(2020, 1, 11));
+    test.update_vested_tokens(current_clock.time)?;
+    vesting_after = test.vesting_copy();
 
-//     assert_eq!(vesting_after.cumulative_vested.amount, 5_000);
-//     assert_eq!(vesting_after.unfunded_liability.amount, 5_000);
+    assert_eq!(vesting_after.cumulative_vested.amount, 5_000);
+    assert_eq!(vesting_after.unfunded_liability.amount, 5_000);
 
-//     current_clock = TimeStamp::new_dt(Utc.ymd(2023, 1, 1));
-//     test.update_vested_tokens(current_clock.time)?;
-//     vesting_after = test.vesting_copy();
+    current_clock = TimeStamp::new_dt(Utc.ymd(2020, 1, 16));
+    test.update_vested_tokens(current_clock.time)?;
+    vesting_after = test.vesting_copy();
 
-//     assert_eq!(vesting_after.cumulative_vested.amount, 7_500);
-//     assert_eq!(vesting_after.unfunded_liability.amount, 7_500);
+    assert_eq!(vesting_after.cumulative_vested.amount, 7_500);
+    assert_eq!(vesting_after.unfunded_liability.amount, 7_500);
 
-//     current_clock = TimeStamp::new_dt(Utc.ymd(2024, 1, 1));
-//     test.update_vested_tokens(current_clock.time)?;
-//     vesting_after = test.vesting_copy();
+    current_clock = TimeStamp::new_dt(Utc.ymd(2020, 1, 21));
+    test.update_vested_tokens(current_clock.time)?;
+    vesting_after = test.vesting_copy();
 
-//     assert_eq!(vesting_after.cumulative_vested.amount, 10_000);
-//     assert_eq!(vesting_after.unfunded_liability.amount, 10_000);
+    assert_eq!(vesting_after.cumulative_vested.amount, 10_000);
+    assert_eq!(vesting_after.unfunded_liability.amount, 10_000);
 
-//     current_clock = TimeStamp::new_dt(Utc.ymd(2050, 1, 1));
-//     test.update_vested_tokens(current_clock.time)?;
-//     vesting_after = test.vesting_copy();
-
-//     assert_eq!(vesting_after.cumulative_vested.amount, 10_000);
-//     assert_eq!(vesting_after.unfunded_liability.amount, 10_000);
-
-//     Ok(())
-// }
+    Ok(())
+}
 
 #[derive(Clone, Debug, PartialEq)]
 struct Tester {
