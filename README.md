@@ -20,7 +20,7 @@ This program functions as Aldrin's vesting treasury manager. The main intent of 
 At the core of this program's data model is the `Vesting` account, which has the following fields:
 
 | Field                  | Type          | Description |
-------- | ----------- |
+| ---------------------- | ------------- | ----------- |
 | `admin`                | `Pubkey`      | The authority of this Vesting account |
 | `vestee_wallet`        | `Pubkey`      | The vestee wallet of this Vesting account, that should receive the vested funds |
 | `mint`                 | `Pubkey`      | The mint of the SPL token locked up |
