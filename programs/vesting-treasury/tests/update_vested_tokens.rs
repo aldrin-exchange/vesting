@@ -152,12 +152,7 @@ impl Tester {
     }
 
     fn update_vested_tokens(&mut self, current_ts: i64) -> Result<()> {
-        self.set_syscalls(
-            CpiValidatorState::UpdateVestedTokens {
-                vesting: self.vesting.key,
-            },
-            current_ts,
-        );
+        self.set_syscalls(CpiValidatorState::UpdateVestedTokens, current_ts);
         let mut ctx = self.context_wrapper();
         let mut accounts = ctx.accounts()?;
 
@@ -193,15 +188,15 @@ impl Tester {
 struct CpiValidator(Arc<Mutex<CpiValidatorState>>);
 #[derive(Debug, Eq, PartialEq)]
 enum CpiValidatorState {
-    UpdateVestedTokens { vesting: Pubkey },
+    UpdateVestedTokens,
     Done,
 }
 
 impl stub::ValidateCpis for CpiValidator {
-    fn validate_next_instruction(&mut self, ix: &Instruction, accounts: &[AccountInfo]) {
+    fn validate_next_instruction(&mut self, ix: &Instruction, _accounts: &[AccountInfo]) {
         let mut state = self.0.lock().unwrap();
         match *state {
-            CpiValidatorState::UpdateVestedTokens { vesting } => {
+            CpiValidatorState::UpdateVestedTokens => {
                 *state = CpiValidatorState::Done;
             }
             CpiValidatorState::Done => {
