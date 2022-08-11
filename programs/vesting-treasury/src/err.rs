@@ -13,6 +13,10 @@ pub enum TreasuryError {
     InvalidArg,
     #[msg("Vesting admin does not match the provided signer")]
     VestingAdminMismatch,
+    /// Use this error for program paths which should never be reached if the
+    /// program logic works as intended.
+    #[msg("There's a bug in the program, see logs for more info")]
+    InvariantViolation,
 }
 
 pub fn acc(msg: impl Display) -> TreasuryError {

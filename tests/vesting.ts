@@ -127,10 +127,10 @@ export class Vesting {
 
 
     const vestingAmount = input.vestingAmount ?? 10_000;
-    const startTs = input.startTs ?? 1577836801;
+    const startTs = input.startTs ?? 1577836801; // Jan 01 2020
     const cliffPeriods = input.cliffPeriods ?? 12;
     const totalPeriods = input.totalPeriods ?? 48;
-    const periodType = input.periodType ?? 1;
+    const periodType = input.periodType ?? 2; // Monthly
 
     const preInstructions = [];
     if (!skipCreateVesting) {

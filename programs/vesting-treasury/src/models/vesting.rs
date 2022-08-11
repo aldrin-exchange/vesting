@@ -1,5 +1,11 @@
 use crate::prelude::*;
+use chrono::Duration;
 use std::mem;
+
+use crate::periods::monthly;
+
+// TODO: Mention in documentation how PeriodType works, and how it influences
+// the interpretation of period fields
 
 #[derive(Default, Debug)]
 #[account]
@@ -87,9 +93,10 @@ impl Vesting {
     /// the current timestamp given by the runtime.
     ///
     /// Vesting schedules have a cliff period following by a period where the
-    /// schedule vests periodically, usually monthly. The periodicity is given
-    /// by the `self.period_type`. As of this contract version only the
-    /// type `Monthly` is accepted by the endpoint that calls this method.
+    /// schedule vests periodically, usually monthly or daily. The periodicity
+    /// is given by the `self.period_type`. As of this contract version only the
+    /// type `Monthly` or `Daily` are supported by the endpoint that calls this
+    /// method.
     ///
     /// If we find ourselves before the end of the cliff period, the amount of
     /// tokens vested is nill, therefore we perform an early return and do not
@@ -106,57 +113,28 @@ impl Vesting {
 
         // cliff_dt marks the end of the cliff period
         // end_dt marks the end of the full vesting period
-        let cliff_dt = shift_months(start_dt, self.cliff_periods as i32);
-        let end_dt = shift_months(start_dt, self.total_periods as i32);
+        let cliff_dt = self.shift_periods(start_dt, self.cliff_periods)?;
+        let end_dt = self.shift_periods(start_dt, self.total_periods)?;
 
         if current_dt < cliff_dt {
-            // We are still in the cliff period and therefore we
-            // do not have to update the vested tokens because there are none
+            msg!(
+                "We are still in the cliff period and \
+                therefore there are no vested tokens yet"
+            );
             return Ok(());
         }
 
         if current_dt >= end_dt {
-            // This means the schedule is fully vested
+            msg!("All tokens are fully vested");
             self.cumulative_vested = self.total_vesting;
             return Ok(());
         }
 
-        let delta_years = (current_dt.year() - cliff_dt.year()) as u32;
-
-        // We want to compute the amount of periods between two dates.
-        // Depending on the difference in years between the two dates we will
-        // have to perform different steps, described below
-        let delta_periods = match delta_years {
-            // This means that both dates are in the same year
-            // e.g. 15/03/2020 & 20/09/2020
-            0 => compute_periods_from_cliff_to_current_dt(cliff_dt, current_dt),
-            // This means that both dates are one year apart
-            // e.g. 15/03/2020 & 20/09/2021
-            // We therefore perform two distinct operations, for the first year
-            // and the second one
-            1 => {
-                // Periods from 15/03/2020 to 31/12/2020
-                compute_periods_from_cliff_to_eoy(cliff_dt)
-                    // Periods from 01/01/2021 to 20/09/2021
-                    + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
-            }
-            // This means that both dates are at least two years apart
-            // e.g. 15/03/2020 & 20/09/2024
-            // We therefore perform two distinct operations, for the first year,
-            // for the years in the middle and the last year
-            _ => {
-                // Periods from 15/03/2020 to 31/12/2020
-                compute_periods_from_cliff_to_eoy(cliff_dt)
-                    // Periods from 01/01/2020 to 31/12/2023
-                    + compute_periods_in_full_years(delta_years)
-                    // Periods from 01/01/2024 to 20/09/2024
-                    + compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
-            }
-        };
+        let delta_periods = self.compute_delta_periods(current_dt, cliff_dt)?;
 
         // (cliff_periods + Δperiods) * total_amount / total_periods
         let cumulative_vested = Decimal::from(self.cliff_periods)
-            .try_add(Decimal::from(delta_periods as u64))?
+            .try_add(Decimal::from(delta_periods))?
             .try_div(Decimal::from(self.total_periods))?
             .try_mul(Decimal::from(self.total_vesting))?
             .try_floor()?;
@@ -164,6 +142,98 @@ impl Vesting {
         self.cumulative_vested = TokenAmount::new(cumulative_vested);
 
         Ok(())
+    }
+
+    /// This method computes the amount of periods between two dates. The
+    /// operations used to compute the result depend on the type of period
+    /// defined by the enum PeriodType.
+    ///
+    /// The current contract supports the PeriodType of `Daily` and `Monthly`.
+    ///
+    /// If the type is daily then the calculation is simply the difference in
+    /// full days between the cliff date and the current date. Note that the
+    /// current date is guaranteed to be higher or equal to the cliff date since
+    /// we only call this method after confirm that such condition holds.
+    ///
+    /// If the type is monthly then depending if both dates are in the same year
+    /// or if they are years apart from each other the method will break down
+    /// the calcualtion in three steps. The first year, the years in between
+    /// and the last year, and will call functions for each step
+    pub fn compute_delta_periods(
+        &mut self,
+        current_dt: DateTime<Utc>,
+        cliff_dt: DateTime<Utc>,
+    ) -> Result<u64> {
+        if current_dt < cliff_dt {
+            return Err(error!(err::arg(
+                "This function should never be called when current_dt < cliff_dt"
+            )));
+        }
+
+        match self.period_type {
+            PeriodType::Daily => {
+                let delta_periods = current_dt
+                    .date()
+                    .signed_duration_since(cliff_dt.date())
+                    .num_days();
+
+                Ok(delta_periods as u64)
+            }
+            PeriodType::Monthly => {
+                let delta_years = (current_dt.year() - cliff_dt.year()) as u32;
+
+                // We want to compute the amount of periods between two dates.
+                // Depending on the difference in years between the two dates we will
+                // have to perform different steps, described below
+                let delta_periods = match delta_years {
+                    // This means that both dates are in the same year
+                    // e.g. 15/03/2020 & 20/09/2020
+                    0 => monthly::compute_periods_from_cliff_to_current_dt(cliff_dt, current_dt),
+                    // This means that both dates are one year apart
+                    // e.g. 15/03/2020 & 20/09/2021
+                    // We therefore perform two distinct operations, for the first year
+                    // and the second one
+                    1 => {
+                        // Periods from 15/03/2020 to 31/12/2020
+                        monthly::compute_periods_from_cliff_to_eoy(cliff_dt)
+                            // Periods from 01/01/2021 to 20/09/2021
+                            + monthly::compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
+                    }
+                    // This means that both dates are at least two years apart
+                    // e.g. 15/03/2020 & 20/09/2024
+                    // We therefore perform two distinct operations, for the first year,
+                    // for the years in the middle and the last year
+                    _ => {
+                        // Periods from 15/03/2020 to 31/12/2020
+                        monthly::compute_periods_from_cliff_to_eoy(cliff_dt)
+                            // Periods from 01/01/2020 to 31/12/2023
+                            + monthly::compute_periods_in_full_years(delta_years)
+                            // Periods from 01/01/2024 to 20/09/2024
+                            + monthly::compute_periods_from_boy_to_current_dt(cliff_dt, current_dt)
+                    }
+                };
+                Ok(delta_periods as u64)
+            }
+            _ => Err(error!(err::acc(
+                "Current program only supports Daily or Monthly PeriodType"
+            ))),
+        }
+    }
+
+    /// Shifts a date according to the period defined. If the period defined in
+    /// the vesting account is `Monthly` then it will shift the date by n months
+    /// and if the period is `Daily` it will shift by n days, where n is the
+    /// argument `periods`
+    pub fn shift_periods(&mut self, date: DateTime<Utc>, periods: u64) -> Result<DateTime<Utc>> {
+        match self.period_type {
+            PeriodType::Daily => date
+                .checked_add_signed(Duration::days(periods as i64))
+                .ok_or_else(|| error!(TreasuryError::InvariantViolation)),
+            PeriodType::Monthly => Ok(shift_months(date, periods as i32)),
+            _ => Err(error!(err::acc(
+                "Current program only supports Daily or Monthly PeriodType"
+            ))),
+        }
     }
 
     /// It updates unfunded liability of the vesting account. The unfunded
@@ -197,8 +267,9 @@ impl Vesting {
     }
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(AnchorDeserialize, AnchorSerialize, Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum PeriodType {
+    Daily,
     Monthly,
     Quarterly,
     SemiAnnually,
@@ -214,78 +285,14 @@ impl Default for PeriodType {
 impl PeriodType {
     pub fn from_u32(value: u32) -> Result<PeriodType> {
         match value {
-            1 => Ok(PeriodType::Monthly),
-            2 => Ok(PeriodType::Quarterly),
-            3 => Ok(PeriodType::SemiAnnually),
-            4 => Ok(PeriodType::Yearly),
+            1 => Ok(PeriodType::Daily),
+            2 => Ok(PeriodType::Monthly),
+            3 => Ok(PeriodType::Quarterly),
+            4 => Ok(PeriodType::SemiAnnually),
+            5 => Ok(PeriodType::Yearly),
             _ => Err(error!(err::arg("The period type enumeration is invalid"))),
         }
     }
-}
-
-/// Computes the amount of periods in between two dates in the same year.
-/// As an example:
-/// cliff_dt = 15/03/2020
-/// current_dt = 20/09/2020
-///
-/// First we confirm that current_dt is not before the cliff_dt, otherwise
-/// we return zero periods. Otherwise, we subtract the amount of months between
-/// each date and add 1 period in the curren_dt day is equal or after the
-/// cliff_dt day. In our example the curent day is 20 which is superior or
-/// equal to 15. We therefore count that month as a period, hence why we add 1.
-pub fn compute_periods_from_cliff_to_current_dt(
-    cliff_dt: DateTime<Utc>,
-    current_dt: DateTime<Utc>,
-) -> u32 {
-    if current_dt.month() < cliff_dt.month() {
-        return 0;
-    }
-
-    current_dt.month()
-        - cliff_dt.month()
-        - if current_dt.day() < cliff_dt.day() {
-            1
-        } else {
-            0
-        }
-}
-
-/// Computes the amount of periods the cliff_dt datetime till the end of the
-/// year (eoy). Since the cliff_dt datetime day is guaranteed to match the day in
-/// which the vesting schedule started, we know that we can easily subtract the
-/// total number of periods in a year (if monthly this means 12) by the period
-/// refering the to the cliff_dt (i.e. month)
-pub fn compute_periods_from_cliff_to_eoy(cliff_dt: DateTime<Utc>) -> u32 {
-    12 - cliff_dt.month()
-}
-
-/// Computes the amount of periods from the beginning of the current year (boy)
-/// to the current_dt datetime.
-///
-/// When PeriodType is Monthly the number or periods will be the current_dt
-/// month minus 1 in case the current day is inferior to the cliff_dt day.
-/// Since the cliff_dt datetime day is guaranteed to match the day in
-/// which the vesting schedule started, we we look at the cliff_dt day and
-/// compare it to the current day to infer if we should count or not with the
-/// current period, hence the substrating by 1 means that we are taking our the
-/// current period because this one has not finished.
-pub fn compute_periods_from_boy_to_current_dt(
-    cliff_dt: DateTime<Utc>,
-    current_dt: DateTime<Utc>,
-) -> u32 {
-    current_dt.month()
-        - if current_dt.day() >= cliff_dt.day() {
-            0
-        } else {
-            1
-        }
-}
-
-/// Computes the amount of periods in a set of full years, represented by
-/// `delta_years` - 1. In the case the PeriodType is Monthly, we simply
-/// multiply the number of years by 12
-pub fn compute_periods_in_full_years(delta_years: u32) -> u32 {
-    (delta_years - 1) * 12
 }
 
 #[cfg(test)]
@@ -447,7 +454,7 @@ mod tests {
     }
 
     #[test]
-    fn it_updates_vested_tokens() -> Result<()> {
+    fn it_updates_vested_tokens_monthly() -> Result<()> {
         let mut vesting = Vesting {
             total_vesting: TokenAmount::new(10_000),
             cumulative_vested: TokenAmount::new(0),
@@ -480,6 +487,46 @@ mod tests {
             } else {
                 1
             };
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn it_updates_vested_tokens_daily() -> Result<()> {
+        let mut vesting = Vesting {
+            period_type: PeriodType::Daily,
+            total_vesting: TokenAmount::new(10_000),
+            cumulative_vested: TokenAmount::new(0),
+            start_ts: TimeStamp::new_dt(Utc.ymd(2020, 6, 10)),
+            total_periods: 100,
+            cliff_periods: 25,
+            ..Default::default()
+        };
+
+        let mut current_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(vesting.start_ts.time, 0), Utc);
+
+        let cliff_dt = current_dt
+            .checked_add_signed(Duration::days(vesting.cliff_periods as i64))
+            .unwrap();
+
+        let mut clock;
+        for i in 1..=110 {
+            current_dt = current_dt.checked_add_signed(Duration::days(1)).unwrap();
+
+            clock = TimeStamp::new_dt(current_dt.date());
+            vesting.update_vested_tokens(clock.time)?;
+
+            // Check that cumulative vested amount is correct
+            let vested_tokens = if current_dt < cliff_dt {
+                0
+            } else if i < 100 {
+                i * 10_000 / 100
+            } else {
+                10_000
+            };
+
+            assert_eq!(vesting.cumulative_vested, TokenAmount::new(vested_tokens));
         }
         Ok(())
     }
@@ -553,6 +600,81 @@ mod tests {
         vesting.update_unfunded_liability()?;
 
         assert_eq!(vesting.unfunded_liability, TokenAmount::new(0));
+
+        Ok(())
+    }
+
+    #[test]
+    fn it_computes_delta_periods_daily() -> Result<()> {
+        let mut vesting = Vesting {
+            period_type: PeriodType::Daily,
+            ..Default::default()
+        };
+        let cliff_ts = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
+        let current_ts = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
+
+        // Converting timestamps to datetimes
+        let mut current_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(current_ts.time, 0), Utc);
+
+        let cliff_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(cliff_ts.time, 0), Utc);
+
+        let mut delta_days = vesting.compute_delta_periods(current_dt, cliff_dt)?;
+
+        assert_eq!(delta_days, 0);
+        for i in 1..=366 {
+            current_dt = current_dt.checked_add_signed(Duration::days(1)).unwrap();
+
+            delta_days = vesting.compute_delta_periods(current_dt, cliff_dt)?;
+            assert_eq!(delta_days, i);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn it_computes_delta_periods_monthly() -> Result<()> {
+        let mut vesting = Vesting {
+            period_type: PeriodType::Monthly,
+            ..Default::default()
+        };
+        let cliff_ts = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
+        let mut current_ts = TimeStamp::new_dt(Utc.ymd(2022, 3, 1));
+
+        // Converting timestamps to datetimes
+        let mut current_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(current_ts.time, 0), Utc);
+
+        let cliff_dt: DateTime<Utc> =
+            DateTime::from_utc(NaiveDateTime::from_timestamp(cliff_ts.time, 0), Utc);
+
+        let mut delta_months = vesting.compute_delta_periods(current_dt, cliff_dt)?;
+
+        assert_eq!(delta_months, 0);
+
+        let mut current_month = 4;
+        let mut current_year = 2022;
+        for i in 1..=48 {
+            current_ts = TimeStamp::new_dt(Utc.ymd(current_year, current_month, 1));
+            current_dt = DateTime::from_utc(NaiveDateTime::from_timestamp(current_ts.time, 0), Utc);
+
+            delta_months = vesting.compute_delta_periods(current_dt, cliff_dt)?;
+
+            assert_eq!(delta_months, i as u64);
+
+            // Increment month and year datetime
+            current_year = if current_month == 12 {
+                current_year + 1
+            } else {
+                current_year
+            };
+            current_month = if current_month < 12 {
+                current_month + 1
+            } else {
+                1
+            };
+        }
 
         Ok(())
     }
