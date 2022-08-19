@@ -10,13 +10,12 @@ use crate::prelude::*;
 pub struct UpdateVestedTokens<'info> {
     #[account(mut)]
     pub vesting: Account<'info, Vesting>,
-    pub clock: Sysvar<'info, Clock>,
 }
 
 pub fn handle(ctx: Context<UpdateVestedTokens>) -> Result<()> {
     let accs = ctx.accounts;
 
-    let clock_ts = accs.clock.unix_timestamp;
+    let clock_ts = TimeStamp::current()?;
 
     if !matches!(
         accs.vesting.period_type,
@@ -28,7 +27,7 @@ pub fn handle(ctx: Context<UpdateVestedTokens>) -> Result<()> {
         )));
     }
 
-    accs.vesting.update_vested_tokens(clock_ts)?;
+    accs.vesting.update_vested_tokens(clock_ts.time)?;
 
     // Since more tokens may be vested we need to update how much of
     // those vested tokens is currently unfunded
