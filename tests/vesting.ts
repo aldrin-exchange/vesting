@@ -21,7 +21,6 @@ export interface InitVestingArgs {
   mint: PublicKey;
   skipAdminSignature: boolean;
   skipKeypairSignature: boolean;
-  skipCreateVesting: boolean;
   vestingAmount: number;
   startTs: number;
   cliffPeriods: number;
@@ -83,7 +82,6 @@ export class Vesting {
     const vestingKeypair = input.keypair ?? Keypair.generate();
     const skipAdminSignature = input.skipAdminSignature ?? false;
     const skipKeypairSignature = input.skipKeypairSignature ?? false;
-    const skipCreateVesting = input.skipCreateVesting ?? false;
 
     const vestingSignerPda =
       input.pda ??
@@ -132,13 +130,6 @@ export class Vesting {
     const totalPeriods = input.totalPeriods ?? 48;
     const periodType = input.periodType ?? 2; // Monthly
 
-    const preInstructions = [];
-    if (!skipCreateVesting) {
-      preInstructions.push(
-        await vesting.account.vesting.createInstruction(vestingKeypair)
-      );
-    }
-
     const signers = [];
     if (!skipAdminSignature) {
       signers.push(adminKeypair);
@@ -166,7 +157,6 @@ export class Vesting {
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers(signers)
-      .preInstructions(preInstructions)
       .rpc();
 
     return new Vesting(vestingKeypair, adminKeypair, mint);
@@ -266,7 +256,6 @@ export class Vesting {
       .updateVestedTokens()
       .accounts({
         vesting: vestingKeypair.publicKey,
-        clock: SYSVAR_CLOCK_PUBKEY,
       })
       .rpc();
   }
