@@ -25,7 +25,7 @@ pub struct Vesting {
     pub cumulative_vested: TokenAmount,
     /// Cumulative amount withdrawn thus far
     pub cumulative_withdrawn: TokenAmount,
-    /// Current amount sitting in the vesting vault
+    /// Current amount available in the vesting vault
     pub vault_balance: TokenAmount,
     /// The unfunded liability is the amount of vested tokens that a user
     /// is already allowed to withdraw but are still not available in the

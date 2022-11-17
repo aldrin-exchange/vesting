@@ -16,6 +16,7 @@ pub fn handle(ctx: Context<UpdateVestedTokens>) -> Result<()> {
     let accs = ctx.accounts;
 
     let clock_ts = TimeStamp::current()?;
+    // let clock_ts = Clock::get()?.unix_timestamp;
 
     if !matches!(
         accs.vesting.period_type,
